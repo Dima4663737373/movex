@@ -16,6 +16,8 @@ import { getTipHistory } from "@/lib/movementClient";
 import { octasToMove } from "@/lib/movement";
 import AuthGuard from "@/components/AuthGuard";
 import HeaderBalance from "@/components/HeaderBalance";
+import { WalletConnectButton } from "@/components/WalletConnectButton";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
 export default function ProfilePage() {
     const { account, connected } = useWallet();
@@ -243,7 +245,7 @@ export default function ProfilePage() {
                         </div>
                     </div>
                 </section>
-            </div>
+            </main>
         </AuthGuard>
     );
 }

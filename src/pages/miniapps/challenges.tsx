@@ -272,6 +272,9 @@ export default function ChallengesPage() {
                     ))}
                 </div>
             </div>
+                    </div>
+                </div>
+            </main>
         </AuthGuard>
     );
 }
