@@ -122,17 +122,46 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 return res.status(400).json({ error: 'Invalid request. Missing postId, creatorAddress, type, or userAddress.' });
             }
 
-            const { data, error } = await supabaseAdmin
+            // Handle upsert manually to avoid "no unique constraint" error
+            // 1. Check if vote exists
+            const { data: existingVote, error: checkError } = await supabaseAdmin
                 .from('votes')
-                .upsert({
-                    user_address: userAddress.toLowerCase(),
-                    post_id: postId,
-                    creator_address: creatorAddress.toLowerCase(),
-                    vote_type: type,
-                    created_at: new Date().toISOString()
-                }, { onConflict: 'user_address, post_id' })
-                .select()
+                .select('id')
+                .eq('user_address', userAddress.toLowerCase())
+                .eq('post_id', postId)
                 .single();
+
+            if (checkError && checkError.code !== 'PGRST116') {
+                 console.error("Supabase Error checking vote:", checkError);
+                 return res.status(500).json({ error: checkError.message, code: checkError.code, details: checkError });
+            }
+
+            let data, error;
+            if (existingVote) {
+                // Update
+                ({ data, error } = await supabaseAdmin
+                    .from('votes')
+                    .update({
+                        vote_type: type,
+                        created_at: new Date().toISOString()
+                    })
+                    .eq('id', existingVote.id)
+                    .select()
+                    .single());
+            } else {
+                // Insert
+                ({ data, error } = await supabaseAdmin
+                    .from('votes')
+                    .insert({
+                        user_address: userAddress.toLowerCase(),
+                        post_id: postId,
+                        creator_address: creatorAddress.toLowerCase(),
+                        vote_type: type,
+                        created_at: new Date().toISOString()
+                    })
+                    .select()
+                    .single());
+            }
 
             if (error) {
                 console.error("Supabase Error recording vote:", error);

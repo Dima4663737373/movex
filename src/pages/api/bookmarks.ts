@@ -204,7 +204,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                         user_address: user,
                         post_id: pid,
                         creator_address: creator,
-                        created_at: new Date().toISOString()
+                        created_at: new Date().toISOString(),
+                        timestamp: Date.now() // Required by DB constraint
                     }]);
 
                 if (error) {
