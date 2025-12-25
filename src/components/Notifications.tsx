@@ -73,7 +73,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
     // Fetch from server when connected and setup Realtime subscription
     useEffect(() => {
-        if (!account?.address || account.address.toString() === '') return;
+        if (!account?.address) return;
+        
+        const userAddressStr = account.address.toString();
+        if (userAddressStr === '') return;
 
         const fetchNotifications = async () => {
             try {
