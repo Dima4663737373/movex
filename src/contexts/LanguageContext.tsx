@@ -128,8 +128,8 @@ interface Translations {
     docs: string;
     builtOnMovement: string;
     
-    imageTooLarge5MB: string;
-    
+    // imageTooLarge5MB: string;  <-- REMOVED DUPLICATE
+
     // Profile Edit
     bio: string;
     avatarUrl: string;
@@ -388,6 +388,8 @@ const translations: Record<Language, Translations> = {
         docs: 'Docs',
         builtOnMovement: 'Built on Movement',
         
+        imageTooLarge5MB: 'Image too large (max 5MB)',
+        
         editProfile: 'Edit Profile',
         saveProfile: 'Save Profile',
         createProfile: 'Create Profile',
@@ -635,6 +637,8 @@ const translations: Record<Language, Translations> = {
         docs: 'Документація',
         builtOnMovement: 'Побудовано на Movement',
 
+        imageTooLarge5MB: 'Зображення занадто велике (макс 5MB)',
+        
         editProfile: 'Редагувати профіль',
         saveProfile: 'Зберегти профіль',
         createProfile: 'Створити профіль',
