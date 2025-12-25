@@ -78,7 +78,7 @@ export async function sendSocialNotification(targetAddress: string, activity: Om
     if (!targetAddress) return;
     
     try {
-        await fetch('/api/notifications', {
+        const res = await fetch('/api/notifications', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -94,6 +94,11 @@ export async function sendSocialNotification(targetAddress: string, activity: Om
                 }
             })
         });
+
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            console.error("Failed to send notification:", res.status, res.statusText, errData);
+        }
     } catch (e) {
         console.error("Error sending social notification", e);
     }

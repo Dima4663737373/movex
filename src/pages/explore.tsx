@@ -37,9 +37,9 @@ export default function ExplorePage() {
         }
         const lowerQuery = query.toLowerCase();
         const filtered = posts.filter(p => 
-            p.content.toLowerCase().includes(lowerQuery) || 
-            p.creator.toLowerCase().includes(lowerQuery) ||
-            profiles[p.creator]?.displayName?.toLowerCase().includes(lowerQuery)
+            (p.content && p.content.toLowerCase().includes(lowerQuery)) || 
+            (p.creator && p.creator.toLowerCase().includes(lowerQuery)) ||
+            (profiles[p.creator]?.displayName && profiles[p.creator].displayName.toLowerCase().includes(lowerQuery))
         );
         setFilteredPosts(filtered);
     };

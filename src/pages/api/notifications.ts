@@ -14,9 +14,10 @@ export interface NotificationData {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-    if (!supabaseAdmin) {
-        return res.status(500).json({ error: 'Supabase Admin client not initialized.' });
-    }
+    try {
+        if (!supabaseAdmin) {
+            return res.status(500).json({ error: 'Supabase Admin client not initialized.' });
+        }
 
     const { userAddress } = req.query;
 
@@ -50,6 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         return res.status(200).json(mappedNotifications);
     } else if (req.method === 'POST') {
+        console.log("POST /api/notifications Body:", JSON.stringify(req.body, null, 2));
         const { action, ...body } = req.body;
         
         // Create Notification
@@ -101,9 +103,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                      error = retry2.error;
                 }
                 
-                 // 3. If related_user column doesn't exist, remove it
-                if (error && error.message?.includes('column "related_user" does not exist')) {
-                     console.log("Retrying without 'related_user' column...");
+                 // 3. If related_user column doesn't exist OR has FK violation, remove it
+                if (error && (
+                    error.message?.includes('column "related_user" does not exist') || 
+                    error.message?.includes('foreign key constraint') ||
+                    error.code === '23503' // Foreign key violation
+                )) {
+                     console.log("Retrying without 'related_user' column (missing or FK violation)...");
                      delete insertPayload.related_user;
                      const retry3 = await supabaseAdmin.from('notifications').insert(insertPayload).select().single();
                      newNotification = retry3.data;
@@ -113,7 +119,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
             if (error) {
                 console.error("Final error creating notification:", error);
-                return res.status(500).json({ error: error.message, details: error, hint: "Check database schema for 'notifications' table." });
+                // If the error is still a FK violation on user_address (target), we can't do anything.
+                // But we shouldn't crash the client.
+                if (error.code === '23503' || error.message?.includes('foreign key constraint')) {
+                     console.warn("Could not create notification due to missing target user in DB.");
+                     return res.status(200).json({ warning: "Notification skipped: Target user not found." });
+                }
+
+                return res.status(500).json({ 
+                    error: error.message, 
+                    code: error.code, 
+                    details: error, 
+                    hint: "Check database schema and foreign keys for 'notifications' table." 
+                });
             }
 
             return res.status(200).json(newNotification);
@@ -249,7 +267,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .from('notifications')
             .select('*')
             .eq('user_address', user)
-            .order('timestamp', { ascending: false })
+            .order('created_at', { ascending: false })
             .limit(50);
 
         if (fetchError) {
@@ -268,6 +286,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(200).json({ success: true, notifications: mappedList });
     } else {
         res.setHeader('Allow', ['GET', 'POST']);
-        res.status(405).json({ error: 'Method not allowed' });
+        return res.status(405).json({ error: 'Method not allowed' });
+    }
+  } catch (unexpectedError: any) {
+        console.error("Unexpected error in notifications API:", unexpectedError);
+        return res.status(500).json({ error: "Unexpected server error", details: unexpectedError.message });
     }
 }

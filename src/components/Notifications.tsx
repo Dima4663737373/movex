@@ -156,7 +156,11 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
                     // Also show as toast when received from server
                     addToast(notification.message, notification.type, 5000);
                 })
-                .subscribe();
+                .subscribe((status, err) => {
+                    if (status === 'CHANNEL_ERROR') {
+                        console.warn('Failed to subscribe to notifications channel:', err);
+                    }
+                });
                 
             subscription = channel;
         }

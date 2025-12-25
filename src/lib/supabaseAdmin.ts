@@ -1,16 +1,38 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim()?.replace(/^["']|["']$/g, '');
 // Use Service Role Key if available, otherwise undefined
 // We trim whitespace to avoid copy-paste errors
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+let supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()?.replace(/^["']|["']$/g, '');
 
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    console.warn('SUPABASE_SERVICE_ROLE_KEY is missing. Admin actions requiring bypass-RLS will fail.');
+// Clean up Service Key if malformed
+if (supabaseServiceKey) {
+     if (supabaseServiceKey.includes(' ') || (supabaseServiceKey.match(/\./g) || []).length > 2) {
+        console.warn("Supabase Service Key seems malformed. Attempting to fix...");
+        
+        let parts = supabaseServiceKey.split(/[\s,]+/);
+        
+        if (parts.length === 1 && supabaseServiceKey.includes('.')) {
+             const dotParts = supabaseServiceKey.split('.');
+             if (dotParts.length >= 6) {
+                 parts = [dotParts.slice(0, 3).join('.')];
+             }
+        }
+
+        if (parts.length > 0) {
+            const validPart = parts.find(p => (p.match(/\./g) || []).length === 2);
+            if (validPart) supabaseServiceKey = validPart;
+            else supabaseServiceKey = parts[0];
+        }
+    }
+}
+
+if (!supabaseServiceKey) {
+    console.warn('SUPABASE_SERVICE_ROLE_KEY is missing or invalid. Admin actions requiring bypass-RLS will fail.');
 } else {
     // Debug logging (safe)
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY.trim();
+    const key = supabaseServiceKey;
     const maskedKey = key.length > 10 ? `${key.substring(0, 5)}...${key.substring(key.length - 5)}` : 'INVALID_KEY_LENGTH';
     console.log(`Supabase Service Key loaded: ${maskedKey} (Length: ${key.length})`);
 }
