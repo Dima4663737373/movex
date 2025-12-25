@@ -73,7 +73,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
 
     // Fetch from server when connected and setup Realtime subscription
     useEffect(() => {
-        if (!account?.address) return;
+        if (!account?.address || account.address.toString() === '') return;
 
         const fetchNotifications = async () => {
             try {
@@ -92,6 +92,10 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
                             return merged;
                         });
                     }
+                } else {
+                    // Log error but don't crash
+                    const err = await res.json().catch(() => ({}));
+                    console.warn("Failed to fetch notifications:", res.status, err);
                 }
             } catch (e) {
                 console.error("Failed to fetch notifications", e);

@@ -13,7 +13,8 @@
 export const MOVEMENT_TESTNET_RPC_DIRECT = "https://testnet.movementnetwork.xyz/v1";
 
 // Movement Mainnet RPC endpoint (direct)
-export const MOVEMENT_MAINNET_RPC_DIRECT = "https://mainnet.movementnetwork.xyz/v1";
+// export const MOVEMENT_MAINNET_RPC_DIRECT = "https://mainnet.movementnetwork.xyz/v1";
+export const MOVEMENT_MAINNET_RPC_DIRECT = "https://testnet.movementnetwork.xyz/v1"; // Redirect to testnet for safety
 
 // Movement Bardock Testnet RPC endpoint
 // Updated to use Bardock testnet as per documentation
@@ -34,7 +35,8 @@ export const MOVEMENT_TESTNET_INDEXER = typeof window !== 'undefined'
     : MOVEMENT_TESTNET_INDEXER_DIRECT;
 
 // Movement Mainnet Indexer endpoint
-export const MOVEMENT_MAINNET_INDEXER_DIRECT = "https://indexer.mainnet.movementnetwork.xyz/v1/graphql";
+// export const MOVEMENT_MAINNET_INDEXER_DIRECT = "https://indexer.mainnet.movementnetwork.xyz/v1/graphql";
+export const MOVEMENT_MAINNET_INDEXER_DIRECT = "https://indexer.testnet.movementnetwork.xyz/v1/graphql"; // Redirect to testnet
 export const MOVEMENT_MAINNET_INDEXER = typeof window !== 'undefined'
     ? "/api/movement-mainnet-indexer"
     : MOVEMENT_MAINNET_INDEXER_DIRECT;
@@ -49,9 +51,9 @@ export const MOVEMENT_MAINNET_CHAIN_ID = 126;
 
 // Movement Network name for display purposes
 export const MOVEMENT_NETWORK_NAME = "Movement Bardock Testnet";
-export const MOVEMENT_MAINNET_NAME = "Movement Mainnet";
+export const MOVEMENT_MAINNET_NAME = "Movement Mainnet (Disabled)";
 
-export type NetworkType = 'testnet' | 'mainnet';
+export type NetworkType = 'testnet'; // | 'mainnet';
 
 export interface NetworkConfig {
     type: NetworkType;
@@ -80,6 +82,7 @@ export const NETWORKS: Record<NetworkType, NetworkConfig> = {
         moduleAddress: "0x0a9ee404e5582778c93a188b4ab011377073e3f72de6884b0d1a878c06488518",
         minesAddress: "0x0a9ee404e5582778c93a188b4ab011377073e3f72de6884b0d1a878c06488518"
     },
+    /*
     mainnet: {
         type: 'mainnet',
         chainId: MOVEMENT_MAINNET_CHAIN_ID,
@@ -92,12 +95,14 @@ export const NETWORKS: Record<NetworkType, NetworkConfig> = {
         // Mainnet Module Address
         moduleAddress: "0xca4cdf80ef00aa5582149f5797908abb0903727e22d53f26c3cffe7aaaadb47c"
     }
+    */
 };
 
 export function getStoredNetwork(): NetworkType {
     if (typeof window === 'undefined') return 'testnet';
     // Always force Testnet
     return 'testnet';
+
 }
 
 export function getCurrentNetworkConfig(): NetworkConfig {
