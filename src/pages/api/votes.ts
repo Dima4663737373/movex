@@ -120,82 +120,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 return res.status(400).json({ error: 'Invalid request. Missing postId, creatorAddress, type, or userAddress.' });
             }
 
-            const creator = creatorAddress.toLowerCase();
-            const user = userAddress.toLowerCase();
-            const pid = postId.toString();
-
-            // Check current vote
-            const { data: currentVote, error: checkError } = await supabaseAdmin
+            const { data, error } = await supabaseAdmin
                 .from('votes')
-                .select('*')
-                .eq('creator_address', creator)
-                .eq('post_id', pid)
-                .eq('user_address', user)
+                .upsert({
+                    user_address: userAddress.toLowerCase(),
+                    post_id: postId,
+                    creator_address: creatorAddress.toLowerCase(),
+                    vote_type: type,
+                    timestamp: Date.now()
+                }, { onConflict: 'user_address, post_id' })
+                .select()
                 .single();
 
-            if (checkError && checkError.code !== 'PGRST116') {
-                 console.error("Database error checking vote:", checkError);
-                 return res.status(500).json({ error: checkError.message });
+            if (error) {
+                console.error("Supabase Error recording vote:", error);
+                return res.status(500).json({ error: error.message, code: error.code, details: error });
             }
 
-            if (currentVote) {
-                if (currentVote.vote_type === type) {
-                    // Toggle off (delete)
-                    const { error } = await supabaseAdmin
-                        .from('votes')
-                        .delete()
-                        .eq('id', currentVote.id);
-
-                    if (error) {
-                        console.error("Database error deleting vote:", error);
-                        return res.status(500).json({ error: error.message });
-                    }
-                } else {
-                    // Change vote (update)
-                    const { error } = await supabaseAdmin
-                        .from('votes')
-                        .update({ vote_type: type })
-                        .eq('id', currentVote.id);
-
-                    if (error) {
-                        console.error("Database error updating vote:", error);
-                        return res.status(500).json({ error: error.message });
-                    }
-                }
-            } else {
-                // New vote (insert)
-                const { error } = await supabaseAdmin
-                    .from('votes')
-                    .insert([{
-                        post_id: pid,
-                        creator_address: creator,
-                        user_address: user,
-                        vote_type: type
-                    }]);
-
-                if (error) {
-                    console.error("Database error inserting vote:", error);
-                    return res.status(500).json({ error: error.message });
-                }
-            }
-
-            // Fetch updated counts
-            const { data: updatedVotes, error: countError } = await supabaseAdmin
-                .from('votes')
-                .select('vote_type, user_address')
-                .eq('creator_address', creator)
-                .eq('post_id', pid);
-
-            if (countError) {
-                 console.error("Database error fetching updated votes:", countError);
-                 return res.status(500).json({ error: countError.message });
-            }
-
-            const up = updatedVotes.filter(v => v.vote_type === 'up').length;
-            const down = updatedVotes.filter(v => v.vote_type === 'down').length;
-            const newUserVote = updatedVotes.find(v => v.user_address === user)?.vote_type || null;
-
-            return res.status(200).json({ up, down, userVote: newUserVote });
+            return res.status(200).json({ success: true, data });
         } else {
             res.setHeader('Allow', ['GET', 'POST']);
             return res.status(405).end(`Method ${req.method} Not Allowed`);

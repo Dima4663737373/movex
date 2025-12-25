@@ -75,6 +75,7 @@ export default function BookmarksPage() {
                             content: {
                                 ...post,
                                 createdAt: (post.createdAt || post.timestamp) * 1000,
+                                timestamp: (post.timestamp || post.createdAt) * 1000,
                                 totalTips: isNaN(Number(post.totalTips)) ? 0 : Number(post.totalTips)
                             },
                             timestamp: (post.timestamp || post.createdAt) * 1000 // Convert to ms
@@ -112,7 +113,7 @@ export default function BookmarksPage() {
                 <title>{t.bookmarks} - MoveX</title>
             </Head>
 
-            <div className="grid grid-cols-1 xl:grid-cols-[1fr_350px] gap-6 xl:divide-x xl:divide-[var(--card-border)]">
+            <div className="grid grid-cols-1 gap-6">
                     
                     {/* CENTER CONTENT */}
                     <div className="min-w-0 lg:px-6">

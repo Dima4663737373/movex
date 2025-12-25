@@ -9,7 +9,6 @@ import { getTipHistory, getStats, getUserBadges } from '@/lib/movementClient';
 import TipHistory from '@/components/TipHistory';
 import PostCard from '@/components/PostCard';
 import Head from 'next/head';
-import RightSidebar from '@/components/RightSidebar';
 import UserListModal from '@/components/UserListModal';
 import { CreatePostForm } from '@/components/CreatePostForm';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -639,12 +638,6 @@ export default function CreatorPage() {
                                     ))}
                                 </div>
                             </div>
-
-                            {/* RIGHT SIDEBAR SKELETON */}
-                            <div className="hidden xl:block lg:pl-6 space-y-6">
-                                <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4 h-[300px] animate-pulse"></div>
-                                <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4 h-[200px] animate-pulse"></div>
-                            </div>
                         </div>
                     </div>
                 </main>
@@ -1142,16 +1135,6 @@ export default function CreatorPage() {
                                     />
                                 )}
                             </div>
-                        </div>
-
-                        {/* RIGHT SIDEBAR */}
-                        <div className="hidden xl:block xl:pl-6">
-                            <RightSidebar
-                                posts={globalPosts}
-                                stats={globalStats}
-                                currentUserAddress={currentUserAddress}
-                                profiles={profiles}
-                            />
                         </div>
                     </div>
 

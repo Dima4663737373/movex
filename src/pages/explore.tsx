@@ -10,7 +10,6 @@ import Head from "next/head";
 import Link from "next/link";
 import PostCard from "@/components/PostCard";
 import { SearchBar } from "@/components/SearchBar";
-import RightSidebar from "@/components/RightSidebar";
 import { getDisplayName, OnChainPost, getAvatar, getGlobalPosts, getGlobalPostsCount } from "@/lib/microThreadsClient";
 import { getStats } from "@/lib/movementClient";
 import { octasToMove } from "@/lib/movement";
@@ -114,7 +113,7 @@ export default function ExplorePage() {
                 <title>Explore - MoveX</title>
             </Head>
 
-            <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-6 xl:divide-x xl:divide-[var(--card-border)]">
+            <div className="grid grid-cols-1 gap-6">
                     
                     {/* CENTER: Trending Posts */}
                     <div className="min-w-0 lg:px-6">
@@ -174,16 +173,6 @@ export default function ExplorePage() {
                                     <p className="text-[var(--text-secondary)]">Check back later for trending content!</p>
                                 </div>
                             )}
-                        </div>
-
-                        {/* RIGHT SIDEBAR */}
-                        <div className="hidden xl:block xl:pl-6">
-                            <RightSidebar
-                                posts={posts}
-                                stats={stats}
-                                currentUserAddress={userAddress}
-                                profiles={profiles}
-                            />
                         </div>
                     </div>
         </AuthGuard>

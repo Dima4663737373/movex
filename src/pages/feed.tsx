@@ -4,7 +4,6 @@ import Head from "next/head";
 import Link from "next/link";
 import { useNotifications } from "@/components/Notifications";
 import PostCard from "@/components/PostCard";
-import RightSidebar from "@/components/RightSidebar";
 import { CreatePostForm } from "@/components/CreatePostForm";
 import { getDisplayName, getUserPostsPaginated, getUserPostsCount, OnChainPost, getAvatar, getGlobalPostsCount, getGlobalPosts, getAllPosts, getPost, getCommentsForPost } from "@/lib/microThreadsClient";
 import { getTipHistory, getStats } from "@/lib/movementClient";
@@ -460,7 +459,7 @@ export default function FeedPage() {
             </Head>
 
             {/* MainLayout applied in _app.tsx */}
-            <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-6 xl:divide-x xl:divide-[var(--card-border)]">
+            <div className="grid grid-cols-1 gap-6">
                 {/* CENTER: Feed */}
                 <div className="min-w-0 lg:px-6 pt-6">
                                 
@@ -530,16 +529,6 @@ export default function FeedPage() {
                                     </div>
                                 )}
                             </div>
-
-                        {/* RIGHT SIDEBAR */}
-                        <div className="hidden xl:block xl:pl-6 pt-6">
-                            <RightSidebar
-                                posts={displayPosts}
-                                stats={stats}
-                                currentUserAddress={userAddress}
-                                profiles={profiles}
-                            />
-                        </div>
                     </div>
                 
                 </AuthGuard>

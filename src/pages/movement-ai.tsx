@@ -3,7 +3,6 @@ import Head from 'next/head';
 import AuthGuard from '@/components/AuthGuard';
 import { useWallet } from '@aptos-labs/wallet-adapter-react';
 import { NETWORKS } from '@/lib/movement';
-import RightSidebar from '@/components/RightSidebar';
 
 
 interface Message {
@@ -169,13 +168,6 @@ export default function MovementAIPage() {
     const { account } = useWallet();
     const userAddress = account?.address?.toString() || '';
     
-    // Mock data for RightSidebar
-    const stats = {
-        totalTips: 450,
-        totalVolume: 15.5,
-        topTipper: "None"
-    };
-
     // Chat State
     const [messages, setMessages] = useState<Message[]>([
         {
@@ -252,7 +244,7 @@ export default function MovementAIPage() {
                 <meta name="description" content="Movel - Your Movement Ecosystem Assistant" />
             </Head>
 
-            <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-6 xl:divide-x xl:divide-[var(--card-border)]">
+            <div className="grid grid-cols-1 gap-6">
                     
                     {/* CENTER CONTENT - CHAT INTERFACE */}
                     <div className="min-w-0 lg:px-6 pt-6 flex flex-col h-[calc(100vh-140px)]">
@@ -393,16 +385,6 @@ export default function MovementAIPage() {
                                     </form>
                                 </div>
                             </div>
-                        </div>
-
-                        {/* RIGHT SIDEBAR */}
-                        <div className="hidden xl:block xl:pl-6 pt-6">
-                            <RightSidebar
-                                posts={[]} 
-                                stats={stats}
-                                currentUserAddress={userAddress}
-                                profiles={{}}
-                            />
                         </div>
 
                     </div>

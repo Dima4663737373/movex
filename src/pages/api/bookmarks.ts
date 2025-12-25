@@ -30,7 +30,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     .single();
 
                 if (error && error.code !== 'PGRST116') {
-                     return res.status(500).json({ error: error.message });
+                     console.error(`Error fetching bookmark (User: ${user}, Post: ${pid}):`, error);
+                     return res.status(500).json({ error: error.message, code: error.code });
                 }
 
                 // Also get total count
@@ -40,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     .eq('post_id', pid);
 
                 if (countError) {
-                    console.error("Error fetching bookmark count:", countError);
+                    console.error(`Error fetching bookmark count (Post: ${pid}):`, countError);
                 }
 
                 return res.status(200).json({ bookmarked: !!data, count: count || 0 });
@@ -206,7 +207,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     }]);
 
                 if (error) {
-                    return res.status(500).json({ error: error.message });
+                    console.error("Supabase Error adding bookmark:", error);
+                    return res.status(500).json({ error: error.message, code: error.code, details: error });
                 }
 
                 // Get updated count

@@ -162,7 +162,7 @@ export default function NotificationsPage() {
 
             <main className="container-custom py-6 md:py-10">
                 <div className="max-w-[1280px] mx-auto">
-                    <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-6 xl:divide-x xl:divide-[var(--card-border)]">
+                    <div className="grid grid-cols-1 gap-6">
                         {/* CENTER: Notifications Feed */}
                         <div className="min-w-0 lg:px-6">
                             <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl overflow-hidden min-h-[600px]">
@@ -214,18 +214,6 @@ export default function NotificationsPage() {
                                         ))
                                     )}
                                 </div>
-                            </div>
-                        </div>
-
-                        {/* RIGHT SIDEBAR - Placeholder or Stats */}
-                        <div className="hidden xl:block lg:pl-6 space-y-6">
-                            <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4">
-                                <h3 className="font-bold text-[var(--text-primary)] mb-4">About Notifications</h3>
-                                <p className="text-sm text-[var(--text-secondary)]">
-                                    This feed shows social interactions like likes, comments, mentions, and follows.
-                                    <br /><br />
-                                    Tip notifications and system alerts appear in the top bar.
-                                </p>
                             </div>
                         </div>
 

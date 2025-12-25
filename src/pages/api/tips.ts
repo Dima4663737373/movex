@@ -72,8 +72,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .single();
 
         if (error) {
-            console.error('Error saving tip:', error);
-            return res.status(500).json({ error: error.message });
+            console.error('Supabase Error saving tip:', error);
+            return res.status(500).json({ error: error.message, code: error.code, details: error });
         }
 
         return res.status(200).json(data);

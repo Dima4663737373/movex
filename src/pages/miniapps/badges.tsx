@@ -315,13 +315,13 @@ export default function BadgesPage() {
                                                 </div>
                                             )}
                                         </div>
-                            </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    )}
+                    </div>
                 </div>
-            </div>
-        </div>
-    </main>
+            </main>
             <style jsx>{`
                 @keyframes bounce-slow {
                     0%, 100% { transform: translateY(0); }

@@ -128,20 +128,23 @@ interface Translations {
     docs: string;
     builtOnMovement: string;
     
-    // Profile
-    editProfile: string;
-    saveProfile: string;
-    createProfile: string;
-    displayName: string;
+    imageTooLarge5MB: string;
+    
+    // Profile Edit
     bio: string;
     avatarUrl: string;
     website: string;
     location: string;
-    displayNamePlaceholder: string;
+    createProfile: string;
+    usernameRequired: string;
+    profileCreated: string;
+    displayName: string;
     bioPlaceholder: string;
     locationPlaceholder: string;
     websitePlaceholder: string;
     bannerPlaceholder: string;
+    saveProfile: string;
+    editProfile: string;
     moveReceived: string;
     moveSent: string;
     tipsReceived: string;

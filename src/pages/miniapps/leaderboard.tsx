@@ -2,7 +2,6 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
-import RightSidebar from "@/components/RightSidebar";
 import AuthGuard from "@/components/AuthGuard";
 import { useState, useEffect } from "react";
 import { getDisplayName, getAvatar } from "@/lib/microThreadsClient";
@@ -179,7 +178,7 @@ export default function LeaderboardPage() {
 
             <main className="container-custom pb-6 md:pb-10">
                 <div className="max-w-[1280px] mx-auto">
-                    <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-6 xl:divide-x xl:divide-[var(--card-border)]">
+                    <div className="grid grid-cols-1 gap-6">
                     
                         {/* MAIN CONTENT */}
                         <div className="min-w-0 lg:px-6 pt-6 min-h-screen">
@@ -274,16 +273,6 @@ export default function LeaderboardPage() {
                                     </div>
                                 )}
                             </div>
-                        </div>
-
-                        {/* RIGHT SIDEBAR */}
-                        <div className="hidden xl:block xl:pl-6 pt-6">
-                            <RightSidebar
-                                posts={[]} 
-                                stats={stats}
-                                currentUserAddress={userAddress}
-                                profiles={{}}
-                            />
                         </div>
 
                     </div>

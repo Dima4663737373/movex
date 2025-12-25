@@ -236,7 +236,7 @@ export default function SavedMessagesPage() {
                 <title>{t.savedMessages} - MoveX</title>
             </Head>
 
-            <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] h-full gap-6 xl:divide-x xl:divide-[var(--card-border)]">
+            <div className="grid grid-cols-1 h-full gap-6">
                         
                         {/* CENTER: Chat Interface */}
                         <div className="min-w-0 lg:px-6 flex flex-col h-full">
@@ -437,10 +437,6 @@ export default function SavedMessagesPage() {
                                     </button>
                                 </div>
                             </div>
-                        </div>
-
-                        {/* RIGHT SIDEBAR (Empty placeholder) */}
-                        <div className="hidden xl:block xl:pl-6">
                         </div>
                     </div>
 
