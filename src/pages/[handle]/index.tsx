@@ -651,7 +651,7 @@ export default function CreatorPage() {
                 <title>{displayName || formatMovementAddress(address)} - MoveFeed</title>
             </Head>
 
-            <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-6 xl:divide-x xl:divide-[var(--card-border)]">
+            <div className="grid grid-cols-1 gap-6">
                 {/* CENTER: Profile Info & Posts */}
                 <div className="space-y-8 min-w-0 lg:px-6">
                     {/* Profile Header Card */}
