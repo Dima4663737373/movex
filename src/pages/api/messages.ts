@@ -54,22 +54,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         // Let's try to fetch all distinct contacts first?
         // Or just fetch all messages involving the user.
         
-        const { data: messages, error } = await supabaseAdmin
+        const { data: messagesData, error } = await supabaseAdmin
             .from('messages')
             .select('*')
             .or(`sender.eq.${userAddress},receiver.eq.${userAddress}`)
-            .order('timestamp', { ascending: false });
+            .order('created_at', { ascending: false });
 
         if (error) {
             console.error(`Error fetching conversations for ${userAddress}:`, JSON.stringify(error, null, 2));
             return res.status(500).json({ error: error.message, details: error });
         }
 
-        if (!messages) {
+        if (!messagesData) {
              return res.status(200).json([]);
         }
 
-        // Process locally to find unique contacts and last message
+        const messages = messagesData.map((m: any) => ({
+            ...m,
+            timestamp: new Date(m.created_at).getTime()
+        }));
         const contacts = new Set<string>();
         messages.forEach((m: Message) => {
             if (m.sender.toLowerCase() === userAddress) contacts.add(m.receiver.toLowerCase());

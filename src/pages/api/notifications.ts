@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .from('notifications')
             .select('*')
             .eq('user_address', user)
-            .order('timestamp', { ascending: false })
+            .order('created_at', { ascending: false })
             .limit(50);
 
         if (error) {
@@ -42,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             id: n.id,
             message: n.message,
             type: n.type,
-            timestamp: n.timestamp,
+            timestamp: new Date(n.created_at).getTime(),
             read: n.read,
             relatedUser: n.related_user,
             data: n.data // Assuming 'data' column exists (JSONB)
@@ -68,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     message,
                     related_user: relatedUser?.toLowerCase(),
                     read: false,
-                    timestamp: Date.now(),
+                    created_at: new Date().toISOString(),
                     data: data || {} // Store extra metadata
                 })
                 .select()
