@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import Head from "next/head";
 import AuthGuard from "@/components/AuthGuard";
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getDisplayName, getAvatar } from "@/lib/microThreadsClient";
 import { getCurrentNetworkConfig } from "@/lib/movement";
 import { getUserCompletedChallenges } from "@/lib/movementClient";
 import { useNotifications } from "@/components/Notifications";
@@ -57,24 +56,6 @@ export default function ChallengesPage() {
     const [challenges, setChallenges] = useState<Challenge[]>(MOCK_CHALLENGES);
     const [isLoading, setIsLoading] = useState(false);
     
-    // Sidebar Data
-    const [displayName, setDisplayName] = useState("");
-    const [avatar, setAvatar] = useState("");
-    
-    useEffect(() => {
-        const fetchUserData = async () => {
-            if (userAddress) {
-                const [name, av] = await Promise.all([
-                    getDisplayName(userAddress),
-                    getAvatar(userAddress)
-                ]);
-                if (name) setDisplayName(name);
-                if (av) setAvatar(av);
-            }
-        };
-        fetchUserData();
-    }, [userAddress]);
-
     // Fetch Challenge Status from Chain
     const fetchChallengeStatus = async () => {
         if (!userAddress) return;

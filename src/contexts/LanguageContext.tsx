@@ -156,11 +156,11 @@ interface Translations {
     copyAddress: string;
     profileUpdated: string;
     profileUpdateError: string;
-    profileCreated: string;
-    usernameRequired: string;
     usernameTaken: string;
     imageTooLarge: string;
     imageTooLarge5MB: string;
+
+    displayNamePlaceholder: string; // Added missing key
 
     // TipHistory
     activity: string;
@@ -418,7 +418,6 @@ const translations: Record<Language, Translations> = {
         usernameRequired: 'Username is required',
         usernameTaken: 'Username is already taken',
         imageTooLarge: 'Image too large for on-chain storage. Please try a smaller image.',
-        imageTooLarge5MB: 'Image too large (max 5MB)',
 
         activity: 'Activity',
         clearActivity: 'Clear Activity',
@@ -667,7 +666,6 @@ const translations: Record<Language, Translations> = {
         usernameRequired: "Ім'я користувача обов'язкове",
         usernameTaken: "Це ім'я користувача вже зайняте",
         imageTooLarge: 'Зображення занадто велике для зберігання в блокчейні. Спробуйте менше.',
-        imageTooLarge5MB: 'Зображення занадто велике (макс 5MB)',
 
         activity: 'Активність',
         clearActivity: 'Очистити активність',

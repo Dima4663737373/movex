@@ -66,6 +66,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                      // Verify signature
                      const verification = verifySignature(message, signature, publicKey);
                      if (!verification.valid) {
+                          console.error("Invalid vote signature:", verification.error, "Message:", message);
                           return res.status(401).json({ error: `Invalid signature: ${verification.error}` });
                      }
                      
@@ -85,6 +86,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                                   throw new Error("No JSON found");
                              }
                          } catch (innerE) {
+                             console.error("Invalid vote message format:", message);
                              return res.status(400).json({ error: 'Invalid message format' });
                          }
                      }

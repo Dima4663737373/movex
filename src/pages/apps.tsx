@@ -3,36 +3,13 @@ import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import AuthGuard from "@/components/AuthGuard";
-import { useState, useEffect } from "react";
-import { getDisplayName, getAvatar } from "@/lib/microThreadsClient";
-import { getStats } from "@/lib/movementClient";
+import { useState } from "react";
 
 // Mini Apps Directory Page
 export default function AppsPage() {
     const { t } = useLanguage();
     const { account } = useWallet();
     const userAddress = account?.address.toString() || "";
-
-    const [displayName, setDisplayName] = useState("");
-    const [avatar, setAvatar] = useState("");
-    const [stats, setStats] = useState({ totalTips: 0, totalVolume: 0, topTipper: "" });
-
-    // Fetch user profile and stats for sidebars
-    useEffect(() => {
-        const fetchData = async () => {
-            if (userAddress) {
-                const [name, av, statsData] = await Promise.all([
-                    getDisplayName(userAddress),
-                    getAvatar(userAddress),
-                    getStats()
-                ]);
-                if (name) setDisplayName(name);
-                if (av) setAvatar(av);
-                if (statsData) setStats(statsData);
-            }
-        };
-        fetchData();
-    }, [userAddress]);
 
     const apps = [
         {

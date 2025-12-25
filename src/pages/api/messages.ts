@@ -61,8 +61,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .order('timestamp', { ascending: false });
 
         if (error) {
-            console.error('Error fetching conversations:', error);
-            return res.status(500).json({ error: error.message });
+            console.error(`Error fetching conversations for ${userAddress}:`, JSON.stringify(error, null, 2));
+            return res.status(500).json({ error: error.message, details: error });
         }
 
         if (!messages) {

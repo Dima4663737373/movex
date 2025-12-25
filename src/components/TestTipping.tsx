@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useMovementTransaction } from "@/hooks/useMovementTransaction";
-import { octasToMove, TEST_TIP_AMOUNT_OCTAS, moveToOctas } from "@/lib/movement";
+import { octasToMove } from "@/lib/movement";
 import TransactionStatus from "./TransactionStatus";
 import { saveLocalTransaction } from "@/lib/movementClient";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";

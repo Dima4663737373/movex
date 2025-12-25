@@ -14,7 +14,7 @@ export function getExplorerLink(
 ): string {
     // Determine network param based on current context
     const storedNetwork = getStoredNetwork();
-    const networkParam = storedNetwork === 'mainnet' 
+    const networkParam = (storedNetwork as string) === 'mainnet' 
         ? '?network=mainnet' 
         : '?network=testnet'; // Changed from 'bardock+testnet' to 'testnet' as per user link example or standard
 
@@ -38,7 +38,7 @@ export function getExplorerLink(
         const baseUrl = 'https://aptoscan.com';
         // AptosScan network param might be different
         // Assuming custom network or similar
-        const aptosNetworkParam = storedNetwork === 'mainnet' 
+        const aptosNetworkParam = (storedNetwork as string) === 'mainnet' 
              ? '?network=custom&rpc=https://mainnet.movementnetwork.xyz/v1' 
              : '?network=custom&rpc=https://testnet.movementnetwork.xyz/v1';
 

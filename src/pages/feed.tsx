@@ -7,7 +7,7 @@ import PostCard from "@/components/PostCard";
 import { CreatePostForm } from "@/components/CreatePostForm";
 import { getDisplayName, getUserPostsPaginated, getUserPostsCount, OnChainPost, getAvatar, getGlobalPostsCount, getGlobalPosts, getAllPosts, getPost, getCommentsForPost } from "@/lib/microThreadsClient";
 import { getTipHistory, getStats } from "@/lib/movementClient";
-import { octasToMove, formatCompactNumber } from "@/lib/movement";
+import { octasToMove } from "@/lib/movement";
 import AuthGuard from "@/components/AuthGuard";
 import StatsBlock from "@/components/StatsBlock";
 import { useLanguage } from "@/contexts/LanguageContext";

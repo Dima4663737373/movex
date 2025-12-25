@@ -2,8 +2,6 @@ import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useState, useEffect } from "react";
 import Head from "next/head";
 import AuthGuard from "@/components/AuthGuard";
-import { useLanguage } from '@/contexts/LanguageContext';
-import { getDisplayName, getAvatar } from "@/lib/microThreadsClient";
 import { getAptosClient, getUserBadges } from "@/lib/movementClient";
 import { getCurrentNetworkConfig } from "@/lib/movement";
 
@@ -100,14 +98,9 @@ const MOCK_BADGES: Badge[] = [
 export default function BadgesPage() {
     const { account } = useWallet();
     const userAddress = account?.address.toString() || "";
-    const { t } = useLanguage();
     
     const [badges, setBadges] = useState<Badge[]>(MOCK_BADGES);
     const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
-    
-    // Sidebar Data
-    const [displayName, setDisplayName] = useState("");
-    const [avatar, setAvatar] = useState("");
     
     // Fetch Badges (with polling)
     const fetchBadges = async () => {
@@ -181,20 +174,9 @@ export default function BadgesPage() {
     };
 
     useEffect(() => {
-        const fetchUserData = async () => {
-            if (userAddress) {
-                const [name, av] = await Promise.all([
-                    getDisplayName(userAddress),
-                    getAvatar(userAddress)
-                ]);
-                if (name) setDisplayName(name);
-                if (av) setAvatar(av);
-                
-                // Fetch badges immediately
-                fetchBadges();
-            }
-        };
-        fetchUserData();
+        if (userAddress) {
+            fetchBadges();
+        }
         
         // Poll for badges
         const interval = setInterval(fetchBadges, 10000);
@@ -287,7 +269,7 @@ export default function BadgesPage() {
                                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelectedBadge(null)}>
                                     <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-8 max-w-sm w-full shadow-2xl transform transition-all" onClick={e => e.stopPropagation()}>
                                         <div className="flex flex-col items-center text-center">
-                                            <div className="text-8xl mb-6 animate-bounce-slow">
+                                            <div className="text-8xl mb-6 animate-bounce">
                                                 {selectedBadge.imageUri}
                                             </div>
                                             <h2 className="text-2xl font-bold text-[var(--text-primary)] mb-2">{selectedBadge.name}</h2>
@@ -322,15 +304,6 @@ export default function BadgesPage() {
                     </div>
                 </div>
             </main>
-            <style jsx>{`
-                @keyframes bounce-slow {
-                    0%, 100% { transform: translateY(0); }
-                    50% { transform: translateY(-10px); }
-                }
-                .animate-bounce-slow {
-                    animation: bounce-slow 3s infinite ease-in-out;
-                }
-            `}</style>
         </AuthGuard>
     );
 }

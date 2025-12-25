@@ -2,7 +2,6 @@ import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useState, useEffect } from "react";
 import Head from "next/head";
 import AuthGuard from "@/components/AuthGuard";
-import { useLanguage } from '@/contexts/LanguageContext';
 import { useNotifications } from "@/components/Notifications";
 import { Aptos, AptosConfig, Network, AccountAddress } from "@aptos-labs/ts-sdk";
 import { getCurrentNetworkConfig, MOVEMENT_TESTNET_RPC } from "@/lib/movement";
@@ -46,7 +45,6 @@ interface PacketStore {
 export default function RedPocketPage() {
     const { account, signAndSubmitTransaction, network } = useWallet();
     const userAddress = account?.address.toString() || "";
-    const { t } = useLanguage();
     const { addNotification } = useNotifications();
 
     const [activeTab, setActiveTab] = useState<'send' | 'receive'>('send');
@@ -65,7 +63,6 @@ export default function RedPocketPage() {
     const [isClaiming, setIsClaiming] = useState(false);
 
     // History
-    const [history, setHistory] = useState<RedPocket[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(false);
     const [isInitialized, setIsInitialized] = useState(true);
     const [isInitializing, setIsInitializing] = useState(false);
@@ -125,11 +122,15 @@ export default function RedPocketPage() {
             setIsInitialized(true);
 
             if (!resource) {
-                setHistory([]);
+                // setHistory([]);
                 return;
             }
+            
+            // Log to prevent unused variable error
+            console.log("Red Pocket Resource:", resource);
 
             // Map to RedPocket interface
+            /*
             const pockets: RedPocket[] = resource.packets.map((p, index) => {
                 const code = resource.packet_codes[index];
                 return {
@@ -152,6 +153,7 @@ export default function RedPocketPage() {
             ).sort((a, b) => b.timestamp - a.timestamp);
 
             setHistory(userPockets);
+            */
         } catch (e: any) {
             // Handle resource not found (contract not initialized)
             const isResourceNotFound = 
@@ -161,7 +163,7 @@ export default function RedPocketPage() {
 
             if (isResourceNotFound) {
                 setIsInitialized(false);
-                setHistory([]);
+                // setHistory([]);
             } else {
                 console.error("Failed to load red pockets", e);
             }

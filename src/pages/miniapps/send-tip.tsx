@@ -1,40 +1,19 @@
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Head from "next/head";
 import AuthGuard from "@/components/AuthGuard";
-import { useLanguage } from '@/contexts/LanguageContext';
-import { getDisplayName, getAvatar } from "@/lib/microThreadsClient";
 import { useMovementTransaction } from "@/hooks/useMovementTransaction";
 import { useNotifications } from "@/components/Notifications";
 
 export default function SendTipPage() {
     const { account } = useWallet();
-    const userAddress = account?.address.toString() || "";
-    const { t } = useLanguage();
     const { addNotification } = useNotifications();
     const { sendTip } = useMovementTransaction();
     
     const [recipientAddress, setRecipientAddress] = useState("");
     const [amount, setAmount] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-    
-    // Sidebar Data
-    const [displayName, setDisplayName] = useState("");
-    const [avatar, setAvatar] = useState("");
-    
-    useEffect(() => {
-        const fetchUserData = async () => {
-            if (userAddress) {
-                const [name, av] = await Promise.all([
-                    getDisplayName(userAddress),
-                    getAvatar(userAddress)
-                ]);
-                if (name) setDisplayName(name);
-                if (av) setAvatar(av);
-            }
-        };
-        fetchUserData();
-    }, [userAddress]);
+
 
     const handleSendTip = async (e: React.FormEvent) => {
         e.preventDefault();

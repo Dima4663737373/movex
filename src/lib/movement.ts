@@ -111,7 +111,7 @@ export function getCurrentNetworkConfig(): NetworkConfig {
 
     // Force proxy URL in browser to avoid CORS and ensure dynamic resolution
     if (typeof window !== 'undefined') {
-        if (config.type === 'mainnet') {
+        if ((config.type as string) === 'mainnet') {
             return {
                 ...config,
                 rpcUrl: "/api/movement-mainnet"
@@ -237,57 +237,31 @@ export const TIPJAR_MODULE_ADDRESS = getCurrentNetworkConfig().moduleAddress;
 export const MOVEMENT_FAUCET_URL = "https://faucet.testnet.bardock.movementlabs.xyz/";
 
 /**
- * Minimum balance threshold (in tokens)
- * If user balance is below this, show faucet notice
- */
-export const MIN_BALANCE_THRESHOLD = 0.1; // 0.1 MOVE tokens
-
-/**
- * Test tip amount (in octas)
- * Movement Network: 1 MOVE = 100,000,000 octas (8 decimals)
- * 0.1 MOVE = 10,000,000 octas
- */
-export const TEST_TIP_AMOUNT_OCTAS = 10000000;
-
-/**
- * Convert octas to MOVE tokens
- * Movement uses 8 decimals (100,000,000 octas = 1 MOVE)
+ * Convert Octas (Movement smallest unit) to MOVE
+ * 1 MOVE = 100,000,000 Octas
  */
 export function octasToMove(octas: number): number {
-    return octas / 100_000_000;
+    return octas / 100000000;
 }
 
 /**
- * Convert MOVE tokens to octas
+ * Convert MOVE tokens to Octas (Movement smallest unit)
+ * 1 MOVE = 100,000,000 Octas
  */
 export function moveToOctas(move: number): number {
-    return Math.floor(move * 100_000_000);
+    return Math.floor(move * 100000000);
 }
 
 /**
- * Default gas configuration for Movement Network
- * These are fallback values if gas estimation fails
- */
-export const DEFAULT_GAS_CONFIG = {
-    maxGasAmount: 200000, // Maximum gas units (increased for safety)
-    gasUnitPrice: 100,     // Gas unit price in octas
-};
-
-/**
- * Gas estimation result interface
+ * Gas Estimation Configuration
  */
 export interface GasEstimation {
-    gasEstimate: number;
     gasUnitPrice: number;
     maxGasAmount: number;
+    gasEstimate?: number;
 }
 
-/**
- * Format a number to a compact string (e.g. 1.2k, 1.5M)
- */
-export function formatCompactNumber(num: number): string {
-    return Intl.NumberFormat('en-US', {
-        notation: "compact",
-        maximumFractionDigits: 1
-    }).format(num);
-}
+export const DEFAULT_GAS_CONFIG: GasEstimation = {
+    gasUnitPrice: 100,
+    maxGasAmount: 2000,
+};

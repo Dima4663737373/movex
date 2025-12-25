@@ -76,22 +76,10 @@ export default function BookmarksPage() {
                                 ...post,
                                 createdAt: (post.createdAt || post.timestamp) * 1000,
                                 timestamp: (post.timestamp || post.createdAt) * 1000,
-                                totalTips: isNaN(Number(post.totalTips)) ? 0 : Number(post.totalTips)
+                                totalTips: post.total_tips ? Number(post.total_tips) : (post.totalTips ? Number(post.totalTips) : 0)
                             },
                             timestamp: (post.timestamp || post.createdAt) * 1000 // Convert to ms
                         }));
-
-                    // Load profiles for bookmarks
-                    const uniqueCreators = [...new Set(bookmarkMessages.map(m => m.content.creator))];
-                    const profileMap: Record<string, any> = {};
-                    await Promise.all(uniqueCreators.map(async (creator) => {
-                        try {
-                            const displayName = await getDisplayName(creator);
-                            const avatar = await getAvatar(creator);
-                            profileMap[creator] = { displayName, avatar };
-                        } catch (e) { console.error(e); }
-                    }));
-                    setProfiles(profileMap);
                 }
 
                 // Sort by timestamp descending

@@ -5,11 +5,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const sbAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const giphyKey = process.env.NEXT_PUBLIC_GIPHY_API_KEY;
 
     const envStatus = {
         NEXT_PUBLIC_SUPABASE_URL: sbUrl ? sbUrl.trim() : 'MISSING',
         SUPABASE_SERVICE_ROLE_KEY: sbKey ? `${sbKey.trim().substring(0, 5)}...${sbKey.trim().substring(sbKey.trim().length - 5)} (len: ${sbKey.trim().length})` : 'MISSING',
         NEXT_PUBLIC_SUPABASE_ANON_KEY: sbAnon ? `${sbAnon.trim().substring(0, 5)}...${sbAnon.trim().substring(sbAnon.trim().length - 5)} (len: ${sbAnon.trim().length})` : 'MISSING',
+        NEXT_PUBLIC_GIPHY_API_KEY: giphyKey ? `${giphyKey.substring(0, 3)}...` : 'MISSING (Using Default)',
     };
 
     let connectionTest = "SKIPPED";

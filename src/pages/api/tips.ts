@@ -39,8 +39,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             .limit(100);
 
         if (error) {
-            console.error('Error fetching tips:', error);
-            return res.status(500).json({ error: error.message });
+            console.error(`Error fetching tips for ${address}:`, JSON.stringify(error, null, 2));
+            return res.status(500).json({ error: error.message, details: error });
         }
 
         return res.status(200).json(tips);

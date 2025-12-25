@@ -1,13 +1,11 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import AuthGuard from "@/components/AuthGuard";
 import { useState, useEffect } from "react";
 import { getDisplayName, getAvatar } from "@/lib/microThreadsClient";
-import { getStats, getAuthorTips, getTopAuthors } from "@/lib/movementClient";
-import { formatMovementAddress } from "@/lib/movement";
-import { octasToMove } from "@/lib/movement";
+import { formatMovementAddress, octasToMove } from "@/lib/movement";
+import { getAuthorTips, getTopAuthors } from "@/lib/movementClient";
 
 interface AuthorStat {
   address: string;
@@ -19,14 +17,9 @@ interface AuthorStat {
 }
 
 export default function LeaderboardPage() {
-    const { t } = useLanguage();
     const { account } = useWallet();
     const userAddress = account?.address.toString() || "";
 
-    const [displayName, setDisplayName] = useState("");
-    const [avatar, setAvatar] = useState("");
-    const [stats, setStats] = useState({ totalTips: 0, totalVolume: 0, topTipper: "" });
-    
     // Leaderboard State
     const [topAuthors, setTopAuthors] = useState<AuthorStat[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -37,15 +30,7 @@ export default function LeaderboardPage() {
     useEffect(() => {
         const fetchData = async () => {
             if (userAddress) {
-                const [name, av, statsData, realTips] = await Promise.all([
-                    getDisplayName(userAddress),
-                    getAvatar(userAddress),
-                    getStats(),
-                    getAuthorTips(userAddress)
-                ]);
-                if (name) setDisplayName(name);
-                if (av) setAvatar(av);
-                if (statsData) setStats(statsData);
+                const realTips = await getAuthorTips(userAddress);
                 setUserRealTips(realTips);
             }
         };
@@ -91,7 +76,7 @@ export default function LeaderboardPage() {
 
         window.addEventListener('tip_sent', handleTipSent);
         return () => window.removeEventListener('tip_sent', handleTipSent);
-    }, [userAddress, displayName, avatar]);
+    }, [userAddress]);
 
     // Fetch Leaderboard Data
     const fetchLeaderboard = async () => {
@@ -104,7 +89,7 @@ export default function LeaderboardPage() {
                  const topList = await getTopAuthors(50);
                  
                  if (topList && topList.length > 0) {
-                    const authorDataPromises = topList.map(async (item) => {
+                    const authorDataPromises = topList.map(async (item: any) => {
                         const addr = item.address;
                         const tips = item.totalTips;
                         const name = await getDisplayName(addr);
