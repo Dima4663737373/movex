@@ -60,6 +60,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 return res.status(400).json({ error: 'Missing targetAddress or message' });
             }
 
+            console.log("Creating notification for:", targetAddress);
+
             const { data: newNotification, error } = await supabaseAdmin
                 .from('notifications')
                 .insert({
@@ -69,13 +71,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     related_user: relatedUser?.toLowerCase(),
                     read: false,
                     created_at: new Date().toISOString(),
+                    timestamp: Date.now(), // Ensure timestamp is present if required by DB schema
                     data: data || {} // Store extra metadata
                 })
                 .select()
                 .single();
 
             if (error) {
-                return res.status(500).json({ error: error.message });
+                console.error("Error creating notification:", error);
+                return res.status(500).json({ error: error.message, details: error });
             }
 
             return res.status(200).json(newNotification);

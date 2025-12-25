@@ -122,8 +122,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             receiver: receiver.toLowerCase(),
             content,
             timestamp: Date.now(),
+            created_at: new Date().toISOString(),
             read: false
         };
+
+        console.log(`Sending message from ${sender} to ${receiver}`);
 
         const { data, error } = await supabaseAdmin
             .from('messages')
@@ -133,7 +136,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         if (error) {
             console.error('Error sending message:', error);
-            return res.status(500).json({ error: error.message });
+            // If error is about missing column "timestamp", we might need to remove it in future
+            // If error is about missing column "created_at", we just added it.
+            return res.status(500).json({ error: error.message, details: error });
         }
 
         // Also mark previous messages from receiver to sender as read
