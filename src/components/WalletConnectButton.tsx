@@ -214,20 +214,11 @@ export function WalletConnectButton() {
     if (connected && account) {
         return (
             <div className="flex items-center gap-4">
-                {/* Network Toggle */}
+                {/* Network Label - Static Testnet */}
                 <div className="flex bg-[var(--card-bg)] rounded-full p-1 border border-[var(--card-border)]">
-                    <button 
-                        onClick={() => switchNetwork('testnet')}
-                        className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${currentNetwork === 'testnet' ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-                    >
+                    <div className="px-3 py-1 bg-[var(--accent)] text-black text-xs font-bold rounded-full">
                         Testnet
-                    </button>
-                    <button 
-                        onClick={() => switchNetwork('mainnet')}
-                        className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${currentNetwork === 'mainnet' ? 'bg-[var(--accent)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-                    >
-                        Mainnet
-                    </button>
+                    </div>
                 </div>
 
                 {/* Network Check */}

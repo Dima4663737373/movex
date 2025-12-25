@@ -38,7 +38,7 @@ const KNOWLEDGE_BASE = [
     },
     {
         keywords: ['chain id', 'chainid', 'network id'],
-        answer: "**Movement Chain IDs:**\n\n• **Bardock Testnet:** 250 (0xfa)\n• **Porto Testnet:** 177 (0xb1)\n• **Mainnet:** (Coming Soon)\n\nMake sure your wallet is set to the correct ID."
+        answer: "**Movement Chain IDs:**\n\n• **Bardock Testnet:** 250 (0xfa)\n• **Porto Testnet:** 177 (0xb1)\n\nMake sure your wallet is set to the correct ID."
     },
     {
         keywords: ['explorer', 'scan', 'transaction', 'hash', 'view'],

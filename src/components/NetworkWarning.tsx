@@ -48,7 +48,7 @@ export function NetworkWarning() {
                     <div className="flex-1">
                         <h3 className="text-lg font-bold text-red-500 mb-2">⚠️ Wrong Network Detected!</h3>
                         <p className="text-white mb-3">
-                            Your wallet is connected to <strong>{currentWalletNetwork}</strong>, but this app is <strong>Movement Testnet</strong> only.
+                            Your wallet is connected to <strong>{currentWalletNetwork}</strong>, but this app is <strong>{requiredNetwork}</strong> only.
                         </p>
                         <div className="bg-black/30 rounded p-3 mb-3">
                             <p className="text-sm text-white/90 mb-2"><strong>To fix:</strong></p>

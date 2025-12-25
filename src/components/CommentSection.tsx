@@ -29,9 +29,9 @@ export default function CommentSection({ postId, comments, commentCounts = {}, o
         if (!content.trim() || !connected) return;
 
         // Strict Network Check
-        const requiredChainId = currentNetwork === 'testnet' ? '250' : '126';
+        const requiredChainId = '250';
         if (network?.chainId?.toString() !== requiredChainId) {
-            addNotification(`Wrong network! Please switch your wallet to Movement ${currentNetwork === 'testnet' ? 'Testnet' : 'Mainnet'} (Chain ID: ${requiredChainId}). Currently on: ${network?.chainId || 'Unknown'}`, 'error');
+            addNotification(`Wrong network! Please switch your wallet to Movement Testnet (Chain ID: 250). Currently on: ${network?.chainId || 'Unknown'}`, 'error');
             return;
         }
 
