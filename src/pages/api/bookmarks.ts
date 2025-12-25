@@ -204,7 +204,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                         user_address: user,
                         post_id: pid,
                         creator_address: creator,
-                        timestamp: Date.now()
+                        created_at: new Date().toISOString()
                     }]);
 
                 if (error) {

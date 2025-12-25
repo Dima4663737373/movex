@@ -10,7 +10,7 @@
 
 // Movement Bardock Testnet RPC endpoint (direct)
 // Updated to working endpoint after DNS resolution failure on bardock subdomain
-export const MOVEMENT_TESTNET_RPC_DIRECT = "https://testnet.movementnetwork.xyz/v1";
+export const MOVEMENT_TESTNET_RPC_DIRECT = "https://aptos.testnet.porto.movementlabs.xyz/v1";
 
 // Movement Mainnet RPC endpoint (direct)
 // export const MOVEMENT_MAINNET_RPC_DIRECT = "https://mainnet.movementnetwork.xyz/v1";

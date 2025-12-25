@@ -62,7 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 sender: sender.toLowerCase(),
                 receiver: receiver?.toLowerCase(),
                 amount,
-                timestamp,
+                // timestamp, // Removed to avoid schema errors if column is missing
                 hash,
                 post_id: postId,
                 type: type || 'sent',

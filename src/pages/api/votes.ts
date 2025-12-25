@@ -129,7 +129,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     post_id: postId,
                     creator_address: creatorAddress.toLowerCase(),
                     vote_type: type,
-                    timestamp: Date.now()
+                    created_at: new Date().toISOString()
                 }, { onConflict: 'user_address, post_id' })
                 .select()
                 .single();
