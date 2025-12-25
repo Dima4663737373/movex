@@ -148,10 +148,7 @@ export default function ProfilePage() {
                                 My Profile
                             </Link>
 
-                            <div className="badge-success hidden sm:flex">
-                                <span className="inline-block w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
-                                Movement Testnet
-                            </div>
+
 
                             <HeaderBalance address={userAddress} />
 

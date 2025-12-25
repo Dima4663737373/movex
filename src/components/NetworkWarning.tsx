@@ -22,18 +22,18 @@ export function NetworkWarning() {
         }
 
         const chainId = network.chainId?.toString();
-        const requiredChainId = currentNetwork === 'testnet' ? '250' : '126';
+        const requiredChainId = '250'; // Always check for Testnet
 
         if (chainId !== requiredChainId) {
             setShowWarning(true);
         } else {
             setShowWarning(false);
         }
-    }, [network, currentNetwork]);
+    }, [network]);
 
     if (!showWarning) return null;
 
-    const requiredNetwork = currentNetwork === 'testnet' ? 'Movement Bardock Testnet (Chain ID: 250)' : 'Movement Mainnet (Chain ID: 126)';
+    const requiredNetwork = 'Movement Bardock Testnet (Chain ID: 250)';
     const currentWalletNetwork = network?.name || `Chain ID: ${network?.chainId}`;
 
     return (
@@ -48,7 +48,7 @@ export function NetworkWarning() {
                     <div className="flex-1">
                         <h3 className="text-lg font-bold text-red-500 mb-2">⚠️ Wrong Network Detected!</h3>
                         <p className="text-white mb-3">
-                            Your wallet is connected to <strong>{currentWalletNetwork}</strong>, but this app is in <strong>{currentNetwork === 'testnet' ? 'Testnet' : 'Mainnet'}</strong> mode.
+                            Your wallet is connected to <strong>{currentWalletNetwork}</strong>, but this app is <strong>Movement Testnet</strong> only.
                         </p>
                         <div className="bg-black/30 rounded p-3 mb-3">
                             <p className="text-sm text-white/90 mb-2"><strong>To fix:</strong></p>

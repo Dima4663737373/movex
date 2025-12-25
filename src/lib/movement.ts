@@ -96,7 +96,8 @@ export const NETWORKS: Record<NetworkType, NetworkConfig> = {
 
 export function getStoredNetwork(): NetworkType {
     if (typeof window === 'undefined') return 'testnet';
-    return (localStorage.getItem('movement_network') as NetworkType) || 'testnet';
+    // Always force Testnet
+    return 'testnet';
 }
 
 export function getCurrentNetworkConfig(): NetworkConfig {

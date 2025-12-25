@@ -820,7 +820,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
         const requiredChainId = currentNetwork === 'testnet' ? '250' : '126';
         if (network?.chainId?.toString() !== requiredChainId) {
             console.error("Wrong network:", network?.chainId);
-            addNotification(`Wrong network! Please switch your wallet to Movement ${currentNetwork === 'testnet' ? 'Testnet' : 'Mainnet'} (Chain ID: ${requiredChainId}). Currently on: ${network?.chainId || 'Unknown'}`, 'error');
+            addNotification(`Wrong network! Please switch your wallet to Movement Testnet (Chain ID: 250). Currently on: ${network?.chainId || 'Unknown'}`, 'error');
             return;
         }
 
