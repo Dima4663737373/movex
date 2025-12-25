@@ -39,6 +39,7 @@ export default function App({ Component, pageProps }: AppProps) {
     const isLandingPage = router.pathname === "/";
 
     useEffect(() => {
+        console.log("🚀 App Version: 1.0.1 - Fixes Applied (Explore, Supabase)");
         // Suppress Nightly Wallet extension errors causing Next.js overlay crash
         const handleError = (event: ErrorEvent) => {
             if (

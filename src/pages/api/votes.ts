@@ -168,7 +168,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 return res.status(500).json({ error: error.message, code: error.code, details: error });
             }
 
-            return res.status(200).json({ success: true, data });
+            // Fetch updated counts to return consistent response
+            const { count: upCount } = await supabaseAdmin
+                .from('votes')
+                .select('*', { count: 'exact', head: true })
+                .eq('post_id', postId)
+                .eq('vote_type', 'up');
+
+            const { count: downCount } = await supabaseAdmin
+                .from('votes')
+                .select('*', { count: 'exact', head: true })
+                .eq('post_id', postId)
+                .eq('vote_type', 'down');
+
+            return res.status(200).json({ 
+                success: true, 
+                data, 
+                up: upCount || 0, 
+                down: downCount || 0, 
+                userVote: type 
+            });
         } else {
             res.setHeader('Allow', ['GET', 'POST']);
             return res.status(405).end(`Method ${req.method} Not Allowed`);

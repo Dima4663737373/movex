@@ -82,7 +82,7 @@ export function SearchBar({ posts, profiles, onSearch }: SearchBarProps) {
                     ...profiles[address]
                 }))
                 .filter(user => {
-                    const nameMatch = user.displayName?.toLowerCase().includes(cleanQuery);
+                    const nameMatch = user.displayName && user.displayName.toLowerCase().includes(cleanQuery);
                     const addressMatch = user.address.toLowerCase().includes(cleanQuery);
                     return nameMatch || addressMatch;
                 })
@@ -92,7 +92,7 @@ export function SearchBar({ posts, profiles, onSearch }: SearchBarProps) {
         // 2. Search Posts
         if (searchPosts) {
             matchedPosts = posts
-                .filter(post => post.content.toLowerCase().includes(cleanQuery))
+                .filter(post => post.content && post.content.toLowerCase().includes(cleanQuery))
                 .slice(0, 5); // Limit to 5 posts
         }
 

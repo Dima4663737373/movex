@@ -293,8 +293,8 @@ export default function FeedPage() {
             const notInterested = notInterestedRes.ok ? await notInterestedRes.json() : { not_interested: [] };
 
             const users = new Set<string>();
-            blocks.blocks?.forEach((b: any) => users.add(b.blocked_user.toLowerCase()));
-            mutes.mutes?.forEach((m: any) => users.add(m.muted_user.toLowerCase()));
+            blocks.blocks?.forEach((b: any) => b.blocked_user && users.add(b.blocked_user.toLowerCase()));
+            mutes.mutes?.forEach((m: any) => m.muted_user && users.add(m.muted_user.toLowerCase()));
 
             const posts = new Set<string>();
             notInterested.not_interested?.forEach((n: any) => posts.add(String(n.post_id)));
@@ -444,7 +444,7 @@ export default function FeedPage() {
     
     const displayPosts = Array.from(uniquePostsMap.values())
         .filter(post => !post.is_comment)
-        .filter(post => !hiddenUsers.has(post.creator.toLowerCase()))
+        .filter(post => post.creator && !hiddenUsers.has(post.creator.toLowerCase()))
         .filter(post => {
             const id = post.id.toString();
             const globalId = post.global_id?.toString() || "";

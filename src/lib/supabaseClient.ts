@@ -27,13 +27,21 @@ if (supabaseKey) {
             // Find the one that looks like a JWT (3 parts separated by dots)
             const validPart = parts.find(p => (p.match(/\./g) || []).length === 2);
             if (validPart) {
-                console.log("Found valid key part, using it.");
+                console.log("Supabase Key Fix: Found valid key part, using it.");
                 supabaseKey = validPart;
             } else {
                  // Fallback: just take the first chunk
+                 console.log("Supabase Key Fix: Using first part as fallback.");
                  supabaseKey = parts[0];
             }
         }
+    }
+}
+
+if (typeof window !== 'undefined') {
+    console.log("Supabase Client Init - Key Length:", supabaseKey?.length);
+    if (supabaseKey?.length > 200) {
+        console.warn("Supabase Key might still be too long!");
     }
 }
 

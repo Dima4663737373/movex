@@ -48,6 +48,18 @@ const getString = (val: any): string => {
     return "";
 };
 
+// Helper to check for 404 / Not Found errors from Aptos SDK or Proxy
+const isNotFound = (error: any): boolean => {
+    if (!error) return false;
+    return (
+        error.status === 404 || 
+        error.message?.includes("resource_not_found") || 
+        error.error_code === "resource_not_found" ||
+        error.message?.includes("Not Found") || // Generic 404 message
+        (error.message?.includes("module_not_found"))
+    );
+};
+
 /**
  * Initialize the global posts registry (Admin only)
  */
@@ -249,7 +261,7 @@ export async function getGlobalPostsCount(): Promise<number> {
         }) as any;
         return Number(feed.post_counter);
     } catch (error: any) {
-        if (error?.message?.includes("resource_not_found") || error?.error_code === "resource_not_found") {
+        if (isNotFound(error)) {
              return 0;
         }
         console.error("Error fetching global post count:", error);
@@ -294,7 +306,7 @@ export async function getPost(postId: number): Promise<OnChainPost | null> {
         }
         return null;
     } catch (error: any) {
-        if (error?.message?.includes("resource_not_found") || error?.error_code === "resource_not_found") {
+        if (isNotFound(error)) {
              return null;
         }
         console.error(`Error fetching post ${postId}:`, error);
@@ -336,7 +348,7 @@ export async function getCommentsForPost(parentId: number): Promise<OnChainPost[
         })).sort((a, b) => b.timestamp - a.timestamp); // Newest first
 
     } catch (error: any) {
-        if (error?.message?.includes("resource_not_found") || error?.error_code === "resource_not_found") {
+        if (isNotFound(error)) {
              return [];
         }
         console.error(`Error fetching comments for post ${parentId}:`, error);
@@ -400,7 +412,7 @@ export async function getGlobalPosts(page: number = 0, limit: number = 10): Prom
         }));
 
     } catch (error: any) {
-        if (error?.message?.includes("resource_not_found") || error?.error_code === "resource_not_found") {
+        if (isNotFound(error)) {
              return [];
         }
         console.error("Error fetching global posts:", error);
@@ -453,7 +465,7 @@ export async function getUserPostsPaginated(userAddress: string, start: number, 
         }));
 
     } catch (error: any) {
-        if (error?.status === 404 || error?.message?.includes("resource_not_found") || error?.error_code === "resource_not_found") {
+        if (isNotFound(error)) {
              return [];
         }
         console.error("Error fetching user posts paginated:", error);
@@ -499,7 +511,7 @@ export async function getAllPosts(): Promise<OnChainPost[]> {
             .filter((post: OnChainPost) => !post.is_deleted)
             .sort((a, b) => b.timestamp - a.timestamp);
     } catch (error: any) {
-        if (error?.status === 404 || error?.message?.includes("module_not_found") || error?.error_code === "module_not_found") {
+        if (isNotFound(error)) {
              return [];
         }
         console.error("Error fetching all posts:", error);
@@ -545,7 +557,7 @@ export async function getUserPosts(userAddress: string): Promise<OnChainPost[]> 
             .filter((post: OnChainPost) => !post.is_deleted)
             .sort((a, b) => b.timestamp - a.timestamp);
     } catch (error: any) {
-        if (error?.status === 404 || error?.message?.includes("module_not_found") || error?.error_code === "module_not_found") {
+        if (isNotFound(error)) {
              return [];
         }
         console.error("Error fetching user posts:", error);
@@ -602,7 +614,7 @@ export async function getDisplayName(userAddress: string): Promise<string> {
         return getString(profile.name);
     } catch (error: any) {
         // Silence 404s (Profile not initialized)
-        if (error?.status === 404 || error?.message?.includes("resource_not_found") || error?.error_code === "resource_not_found") {
+        if (isNotFound(error)) {
              return "";
         }
         console.error("Error fetching display name:", error);
@@ -723,7 +735,7 @@ export async function getProfile(address: string): Promise<ProfileData | null> {
 
     } catch (error: any) {
         // Silence 404s (Profile not initialized)
-        if (error?.status === 404 || error?.message?.includes("resource_not_found") || error?.error_code === "resource_not_found") {
+        if (isNotFound(error)) {
              return null;
         }
         console.error("Error fetching profile:", error);
@@ -878,7 +890,7 @@ export async function getAvatar(userAddress: string): Promise<string> {
             return avatarUrl;
         }
     } catch (error: any) {
-        if (error?.status === 404 || error?.message?.includes("resource_not_found") || error?.error_code === "resource_not_found") {
+        if (isNotFound(error)) {
             // Profile not initialized, fallback to default
         } else {
              // Silently fail and return default

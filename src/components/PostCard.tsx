@@ -123,6 +123,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
         const optimisticPost = {
             id: tempId,
             global_id: 0,
+            creator: account.address.toString(),
             creatorAddress: account.address.toString(),
             creatorHandle: account.ansName || undefined,
             content: `[ref:${postRef}]`,

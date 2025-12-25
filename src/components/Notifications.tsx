@@ -108,8 +108,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         let subscription: any = null;
         
         if (supabase && account?.address) {
+            // Use unique channel for each user to prevent collisions
+            const channelId = `notifications:${account.address.toString()}`;
+            console.log(`Subscribing to Supabase channel: ${channelId}`);
+
             const channel = supabase
-                .channel('public:notifications')
+                .channel(channelId)
                 .on('postgres_changes', { 
                     event: 'INSERT', 
                     schema: 'public', 
@@ -157,6 +161,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
                     addToast(notification.message, notification.type, 5000);
                 })
                 .subscribe((status, err) => {
+                    console.log(`Supabase subscription status for ${channelId}:`, status);
                     if (status === 'CHANNEL_ERROR') {
                         console.warn('Failed to subscribe to notifications channel:', err);
                     }

@@ -256,7 +256,7 @@ export default function LeftSidebar({ activePage, currentUserAddress, displayNam
                                 {item.icon}
                                 {/* @ts-ignore */}
                                 {item.badge > 0 && (
-                                    <span className={`absolute -top-1 -right-2 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full ring-2 ring-[var(--bg-primary)] animate-pulse ${!isCollapsed ? 'hidden' : ''}`}>
+                                    <span className={`absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full ring-2 ring-[var(--bg-primary)] animate-pulse z-50 ${!isCollapsed ? 'hidden' : ''}`}>
                                         {/* @ts-ignore */}
                                         {item.badge > 99 ? '99+' : item.badge}
                                     </span>

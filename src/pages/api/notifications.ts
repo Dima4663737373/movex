@@ -95,7 +95,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
                 
                 // 2. If data column doesn't exist, remove it (if error persists)
-                if (error && error.message?.includes('column "data" does not exist')) {
+                if (error && (
+                    error.message?.includes('column "data" does not exist') ||
+                    error.message?.includes("Could not find the 'data' column") ||
+                    error.code === 'PGRST204'
+                )) {
                      console.log("Retrying without 'data' column...");
                      delete insertPayload.data;
                      const retry2 = await supabaseAdmin.from('notifications').insert(insertPayload).select().single();
