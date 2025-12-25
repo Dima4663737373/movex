@@ -75,12 +75,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (!account?.address) return;
         
-        const userAddressStr = account.address.toString();
-        if (userAddressStr === '') return;
-
         const fetchNotifications = async () => {
             try {
-                const res = await fetch(`/api/notifications?userAddress=${account.address}`);
+                const res = await fetch(`/api/notifications?userAddress=${account.address.toString()}`);
                 if (res.ok) {
                     const serverNotifications = await res.json();
                     if (Array.isArray(serverNotifications) && serverNotifications.length > 0) {
