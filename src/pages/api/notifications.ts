@@ -60,26 +60,60 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 return res.status(400).json({ error: 'Missing targetAddress or message' });
             }
 
-            console.log("Creating notification for:", targetAddress);
+            let insertPayload: any = {
+                user_address: targetAddress.toLowerCase(),
+                type: type || 'info',
+                message,
+                related_user: relatedUser?.toLowerCase(),
+                read: false,
+                created_at: new Date().toISOString(),
+                timestamp: Date.now(), // Try with timestamp first
+                data: data || {}
+            };
 
-            const { data: newNotification, error } = await supabaseAdmin
+            console.log("Attempting to create notification with payload:", JSON.stringify(insertPayload));
+
+            let { data: newNotification, error } = await supabaseAdmin
                 .from('notifications')
-                .insert({
-                    user_address: targetAddress.toLowerCase(),
-                    type: type || 'info',
-                    message,
-                    related_user: relatedUser?.toLowerCase(),
-                    read: false,
-                    created_at: new Date().toISOString(),
-                    timestamp: Date.now(), // Ensure timestamp is present if required by DB schema
-                    data: data || {} // Store extra metadata
-                })
+                .insert(insertPayload)
                 .select()
                 .single();
 
+            // Retry logic for common schema mismatches
             if (error) {
-                console.error("Error creating notification:", error);
-                return res.status(500).json({ error: error.message, details: error });
+                console.warn("Initial notification creation failed:", error.message);
+
+                // 1. If timestamp column doesn't exist, remove it
+                if (error.message?.includes('column "timestamp" does not exist')) {
+                    console.log("Retrying without 'timestamp' column...");
+                    delete insertPayload.timestamp;
+                    const retry1 = await supabaseAdmin.from('notifications').insert(insertPayload).select().single();
+                    newNotification = retry1.data;
+                    error = retry1.error;
+                }
+                
+                // 2. If data column doesn't exist, remove it (if error persists)
+                if (error && error.message?.includes('column "data" does not exist')) {
+                     console.log("Retrying without 'data' column...");
+                     delete insertPayload.data;
+                     const retry2 = await supabaseAdmin.from('notifications').insert(insertPayload).select().single();
+                     newNotification = retry2.data;
+                     error = retry2.error;
+                }
+                
+                 // 3. If related_user column doesn't exist, remove it
+                if (error && error.message?.includes('column "related_user" does not exist')) {
+                     console.log("Retrying without 'related_user' column...");
+                     delete insertPayload.related_user;
+                     const retry3 = await supabaseAdmin.from('notifications').insert(insertPayload).select().single();
+                     newNotification = retry3.data;
+                     error = retry3.error;
+                }
+            }
+
+            if (error) {
+                console.error("Final error creating notification:", error);
+                return res.status(500).json({ error: error.message, details: error, hint: "Check database schema for 'notifications' table." });
             }
 
             return res.status(200).json(newNotification);
