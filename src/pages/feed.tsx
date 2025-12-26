@@ -30,7 +30,8 @@ export default function FeedPage() {
     const [loadingGlobal, setLoadingGlobal] = useState(true);
     const [profiles, setProfiles] = useState<Record<string, any>>({});
     const [stats, setStats] = useState({ totalTips: 0, totalVolume: 0, topTipper: "" });
-    const [commentCounts, setCommentCounts] = useState<Record<number, number>>({});
+    const [commentCounts, setCommentCounts] = useState<Record<string | number, number>>({});
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     // Pagination State
     const [cursor, setCursor] = useState<number | null>(null);
