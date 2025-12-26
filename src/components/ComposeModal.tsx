@@ -45,6 +45,12 @@ export default function ComposeModal({ isOpen, onClose, onPostCreated }: Compose
     const { t } = useLanguage();
     const { currentNetwork } = useNetwork();
     const { connected, signAndSubmitTransaction, account, network } = useWallet();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
     const [content, setContent] = useState('');
     const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
     const [creating, setCreating] = useState(false);
@@ -534,10 +540,10 @@ export default function ComposeModal({ isOpen, onClose, onPostCreated }: Compose
         })();
     };
 
-    if (!isOpen) return null;
+    if (!isOpen || !mounted) return null;
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
+    return createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onClose}>
             <div ref={modalRef} className="bg-[var(--card-bg)] w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh]" onClick={e => e.stopPropagation()}>
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--card-border)]">
