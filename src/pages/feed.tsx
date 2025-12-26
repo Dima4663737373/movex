@@ -420,15 +420,19 @@ export default function FeedPage() {
     useEffect(() => {
         if (globalPosts.length > 0 && optimisticPosts.length > 0) {
             setOptimisticPosts(prev => {
-                const globalIds = new Set(globalPosts.map(p => p.id));
+                const globalIds = new Set(globalPosts.map(p => Number(p.id)));
                 // Keep optimistic posts that are NOT in global posts yet
                 // Also keep pending posts
                 return prev.filter(p => {
                     // If it's pending, keep it
                     if (p.status === 'pending') return true;
                     // If it's success (has final ID), check if that ID is in global posts
-                    if (p.status === 'success' && globalIds.has(p.id)) {
-                        return false; // Remove, as it's now in global
+                    if (p.status === 'success') {
+                        // Cast p.id to number before checking
+                        const numericId = Number(p.id);
+                        if (!isNaN(numericId) && globalIds.has(numericId)) {
+                             return false; // Remove, as it's now in global
+                        }
                     }
                     return true; // Keep otherwise
                 });
