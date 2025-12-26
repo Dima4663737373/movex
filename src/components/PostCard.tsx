@@ -1066,7 +1066,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                 amount={parseFloat(tipAmount)}
             />
             <div 
-                className={`${compact ? 'py-2 hover:bg-transparent' : 'border-b border-[var(--card-border)] px-4 py-3 lg:px-6 lg:py-4 hover:bg-[var(--hover-bg)]'} transition-colors duration-200 cursor-pointer`}
+                className={`${compact ? 'py-2 hover:bg-transparent' : 'border-b border-[var(--card-border)] px-4 py-3 lg:px-6 lg:py-4 hover:bg-[var(--hover-bg)]/20'} transition-colors duration-200 cursor-pointer`}
                 onClick={handleCardClick}
             >
                 {/* Repost Indicator */}
@@ -1406,7 +1406,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                             <div className="flex-1 flex justify-center">
                                 <button 
                                     onClick={() => setShowReplyForm(!showReplyForm)}
-                                    className="group flex items-center gap-1.5 text-[var(--text-secondary)] hover:text-sky-500 transition-colors"
+                                    className="group flex items-center gap-1.5 text-[var(--text-secondary)] hover:text-sky-500 transition-all active:scale-90"
                                     title={t.replyButton}
                                 >
                                     <div className="p-2 rounded-full group-hover:bg-sky-500/10 transition-all group-hover:scale-110">
@@ -1429,7 +1429,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                                         e.stopPropagation();
                                         setShowRepostOptions(!showRepostOptions);
                                     }}
-                                    className="group flex items-center gap-1.5 text-[var(--text-secondary)] hover:text-green-500 transition-colors"
+                                    className="group flex items-center gap-1.5 text-[var(--text-secondary)] hover:text-green-500 transition-all active:scale-90"
                                     title={t.repostButton}
                                 >
                                     <div className="p-2 rounded-full group-hover:bg-green-500/10 transition-all group-hover:scale-110">
@@ -1526,7 +1526,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                                         <button
                                             onClick={() => !tipping && setShowTipInput(true)}
                                             disabled={tipping}
-                                            className={`group flex items-center gap-1 transition-colors ${tipping ? 'text-yellow-500' : 'text-[var(--text-secondary)] hover:text-yellow-400'}`}
+                                            className={`group flex items-center gap-1 transition-all active:scale-90 ${tipping ? 'text-yellow-500' : 'text-[var(--text-secondary)] hover:text-yellow-400'}`}
                                             title={t.tip}
                                         >
                                             <div className="p-2 rounded-full group-hover:bg-yellow-400/10 transition-all group-hover:scale-110">
@@ -1610,7 +1610,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                             {/* Share Button */}
                             <div className="flex-1 flex justify-center">
                                 <button 
-                                    className={`group flex items-center gap-1 transition-colors ${isCopied ? 'text-green-500' : 'text-[var(--text-secondary)] hover:text-blue-500'}`}
+                                    className={`group flex items-center gap-1 transition-all active:scale-90 ${isCopied ? 'text-green-500' : 'text-[var(--text-secondary)] hover:text-blue-500'}`}
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         const url = `${window.location.origin}/post/${post.id}`;
