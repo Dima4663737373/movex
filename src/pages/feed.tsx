@@ -13,6 +13,12 @@ import StatsBlock from "@/components/StatsBlock";
 import { useLanguage } from "@/contexts/LanguageContext";
 import RightSidebar from "@/components/RightSidebar";
 
+// Extended interface for optimistic updates
+interface OptimisticPost extends Omit<OnChainPost, 'id'> {
+    id: number | string;
+    status?: 'pending' | 'success' | 'error';
+}
+
 export default function FeedPage() {
     const { connected, account } = useWallet();
     const { t } = useLanguage();
@@ -20,7 +26,7 @@ export default function FeedPage() {
 
     // Global Feed State
     const [globalPosts, setGlobalPosts] = useState<OnChainPost[]>([]);
-    const [optimisticPosts, setOptimisticPosts] = useState<OnChainPost[]>([]);
+    const [optimisticPosts, setOptimisticPosts] = useState<OptimisticPost[]>([]);
     const [loadingGlobal, setLoadingGlobal] = useState(true);
     const [profiles, setProfiles] = useState<Record<string, any>>({});
     const [stats, setStats] = useState({ totalTips: 0, totalVolume: 0, topTipper: "" });
@@ -330,7 +336,7 @@ export default function FeedPage() {
     // Optimistic Post Event Handlers
     useEffect(() => {
         const handlePostPending = (e: Event) => {
-            const customEvent = e as CustomEvent<OnChainPost>;
+            const customEvent = e as CustomEvent<OptimisticPost>;
             if (customEvent.detail) {
                 setOptimisticPosts(prev => [customEvent.detail, ...prev]);
             }
@@ -354,13 +360,13 @@ export default function FeedPage() {
                      if (exists) {
                          return prev.map(p => {
                              if (p.id.toString() === tempId) {
-                                 return { ...post, id: finalId };
+                                 return { ...post, id: finalId, status: 'success' };
                              }
                              return p;
                          });
                      } else {
                          // Add new post
-                         return [{ ...post, id: finalId }, ...prev];
+                         return [{ ...post, id: finalId, status: 'success' }, ...prev];
                      }
                  });
              }
@@ -438,7 +444,7 @@ export default function FeedPage() {
 
     // Prepare display posts with robust deduplication
     const allPosts = [...optimisticPosts, ...globalPosts];
-    const uniquePostsMap = new Map<string, OnChainPost>();
+    const uniquePostsMap = new Map<string, OptimisticPost>();
 
     allPosts.forEach(post => {
         // We use a composite key for uniqueness: creator + id
