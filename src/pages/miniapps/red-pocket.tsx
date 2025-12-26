@@ -8,7 +8,7 @@ import { getCurrentNetworkConfig, MOVEMENT_TESTNET_RPC } from "@/lib/movement";
 import { moveToOctas, octasToMove } from "@/lib/movement";
 
 // Module Constants
-const MODULE_NAME = "red_packet_v12";
+const MODULE_NAME = "red_packet_v10";
 const RESOURCE_ACCOUNT_SEED = new Uint8Array([7]); // x"07"
 
 interface RedPocket {

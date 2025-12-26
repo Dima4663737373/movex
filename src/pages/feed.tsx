@@ -401,8 +401,6 @@ export default function FeedPage() {
             if (connected && userAddress) {
                 fetchProfileData();
             }
-            // Clear optimistic posts after a delay to ensure the real one is fetched
-            setTimeout(() => setOptimisticPosts([]), 2000);
         };
         window.addEventListener('tip_sent', handleRefresh);
 

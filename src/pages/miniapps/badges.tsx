@@ -117,7 +117,7 @@ export default function BadgesPage() {
             try {
                 const resource = await client.getAccountResource({
                     accountAddress: userAddress,
-                    resourceType: `${config.minesAddress}::daily_check_in_v12::CheckInState`
+                    resourceType: `${config.minesAddress}::daily_check_in_v10::CheckInState`
                 });
                 // @ts-ignore
                 currentStreak = Number(resource.current_streak);

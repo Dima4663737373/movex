@@ -207,7 +207,7 @@ export async function getUserCompletedChallenges(userAddress: string): Promise<s
     try {
       const resource = await client.getAccountResource({
         accountAddress: normalizedAddress,
-        resourceType: `${minesAddress}::challenges_v12::UserProgress`
+        resourceType: `${minesAddress}::challenges_v10::UserProgress`
       });
 
       const data = resource as any;
@@ -272,7 +272,7 @@ export async function getUserBadges(userAddress: string): Promise<any[]> {
     try {
         const userBadgesRes = await client.getAccountResource({
             accountAddress: normalizedAddress,
-            resourceType: `${minesAddress}::badges_v12::UserBadges`
+            resourceType: `${minesAddress}::badges_v10::UserBadges`
         }) as any;
         userBadgeIds = userBadgesRes.badges || [];
     } catch (e) {
@@ -722,10 +722,13 @@ export async function getUserTipStats(userAddress: string): Promise<{
         // 1. Get total received using our helper
         const totalReceived = await getAuthorTips(userAddress);
 
-        // 2. Get total sent from TopTipperStats
+        // 2. Get total sent
         let totalSent = 0;
-        const client = getAptosClient();
+        // TopTipperStats is not available in v10 contract. 
+        // We would need to query events to get this data.
         
+        /* 
+        const client = getAptosClient();
         try {
             const stats = await client.getAccountResource({
                 accountAddress: minesAddress,
@@ -750,6 +753,7 @@ export async function getUserTipStats(userAddress: string): Promise<{
         } catch (e: any) {
             // Resource not found or other error
         }
+        */
 
         return {
             totalSent,

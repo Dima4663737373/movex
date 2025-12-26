@@ -257,7 +257,7 @@ export async function getGlobalPostsCount(): Promise<number> {
         const client = getClient();
         const feed = await client.getAccountResource({
             accountAddress: MODULE_ADDRESS,
-            resourceType: `${MODULE_ADDRESS}::move_feed_v12::GlobalFeed`
+            resourceType: `${MODULE_ADDRESS}::move_feed_v13::GlobalFeed`
         }) as any;
         return Number(feed.post_counter);
     } catch (error: any) {
@@ -280,7 +280,7 @@ export async function getPost(postId: number): Promise<OnChainPost | null> {
         const client = getClient();
         const feed = await client.getAccountResource({
             accountAddress: MODULE_ADDRESS,
-            resourceType: `${MODULE_ADDRESS}::move_feed_v12::GlobalFeed`
+            resourceType: `${MODULE_ADDRESS}::move_feed_v13::GlobalFeed`
         }) as any;
 
         const posts = feed.posts as any[];
@@ -325,7 +325,7 @@ export async function getCommentsForPost(parentId: number): Promise<OnChainPost[
         const client = getClient();
         const feed = await client.getAccountResource({
             accountAddress: MODULE_ADDRESS,
-            resourceType: `${MODULE_ADDRESS}::move_feed_v12::GlobalFeed`
+            resourceType: `${MODULE_ADDRESS}::move_feed_v13::GlobalFeed`
         }) as any;
 
         const allComments = feed.comments as any[];
@@ -382,7 +382,7 @@ export async function getGlobalPosts(page: number = 0, limit: number = 10): Prom
         const client = getClient();
         const feed = await client.getAccountResource({
             accountAddress: MODULE_ADDRESS,
-            resourceType: `${MODULE_ADDRESS}::move_feed_v12::GlobalFeed`
+            resourceType: `${MODULE_ADDRESS}::move_feed_v13::GlobalFeed`
         }) as any;
 
         const allPosts = feed.posts as any[];
@@ -433,7 +433,7 @@ export async function getUserPostsPaginated(userAddress: string, start: number, 
         const client = getClient();
         const feed = await client.getAccountResource({
             accountAddress: MODULE_ADDRESS,
-            resourceType: `${MODULE_ADDRESS}::move_feed_v12::GlobalFeed`
+            resourceType: `${MODULE_ADDRESS}::move_feed_v13::GlobalFeed`
         }) as any;
 
         const allPosts = feed.posts as any[];
@@ -578,7 +578,7 @@ export async function getUserPostsCount(userAddress: string): Promise<number> {
         const client = getClient();
         const feed = await client.getAccountResource({
             accountAddress: MODULE_ADDRESS,
-            resourceType: `${MODULE_ADDRESS}::move_feed_v12::GlobalFeed`
+            resourceType: `${MODULE_ADDRESS}::move_feed_v13::GlobalFeed`
         }) as any;
 
         const allPosts = feed.posts as any[];
@@ -608,7 +608,7 @@ export async function getDisplayName(userAddress: string): Promise<string> {
         const client = getClient();
         const profile = await client.getAccountResource({
             accountAddress: convertToMovementAddress(userAddress),
-            resourceType: `${MODULE_ADDRESS}::move_feed_v12::Profile`
+            resourceType: `${MODULE_ADDRESS}::move_feed_v13::Profile`
         }) as any;
 
         return getString(profile.name);
@@ -651,7 +651,7 @@ export async function getUserTipStats(userAddress: string): Promise<{
         try {
             const registry = await client.getAccountResource({
                 accountAddress: MODULE_ADDRESS,
-                resourceType: `${MODULE_ADDRESS}::donations_v12::Registry`
+                resourceType: `${MODULE_ADDRESS}::donations_v10::Registry`
             }) as any;
 
             if (registry && registry.total_tips && registry.total_tips.handle) {
@@ -724,7 +724,7 @@ export async function getProfile(address: string): Promise<ProfileData | null> {
         const client = getClient();
         const profile = await client.getAccountResource({
             accountAddress: convertToMovementAddress(address),
-            resourceType: `${MODULE_ADDRESS}::move_feed_v12::Profile`
+            resourceType: `${MODULE_ADDRESS}::move_feed_v13::Profile`
         }) as any;
 
         return {
@@ -881,7 +881,7 @@ export async function getAvatar(userAddress: string): Promise<string> {
         const client = getClient();
         const profile = await client.getAccountResource({
             accountAddress: convertToMovementAddress(userAddress),
-            resourceType: `${MODULE_ADDRESS}::move_feed_v12::Profile`
+            resourceType: `${MODULE_ADDRESS}::move_feed_v13::Profile`
         }) as any;
 
         const avatarUrl = getString(profile.avatar_url);
