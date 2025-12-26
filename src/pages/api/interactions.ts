@@ -36,7 +36,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     .select('muted_user, created_at')
                     .eq('muter', user);
                 
-                if (error) throw error;
+                if (error) {
+                    // Handle missing table gracefully
+                    if (error.code === '42P01') return res.status(200).json({ mutes: [] });
+                    throw error;
+                }
                 return res.status(200).json({ mutes: data });
             } 
             else if (type === 'blocks') {
@@ -45,7 +49,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     .select('blocked_user, created_at')
                     .eq('blocker', user);
                 
-                if (error) throw error;
+                if (error) {
+                    // Handle missing table gracefully
+                    if (error.code === '42P01') return res.status(200).json({ blocks: [] });
+                    throw error;
+                }
                 return res.status(200).json({ blocks: data });
             }
             else if (type === 'not_interested') {
@@ -54,7 +62,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                     .select('post_id, created_at')
                     .eq('user_address', user);
                 
-                if (error) throw error;
+                if (error) {
+                    // Handle missing table gracefully
+                    if (error.code === '42P01') return res.status(200).json({ not_interested: [] });
+                    throw error;
+                }
                 return res.status(200).json({ not_interested: data });
             }
             else {

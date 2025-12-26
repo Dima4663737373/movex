@@ -11,6 +11,7 @@ import { octasToMove } from "@/lib/movement";
 import AuthGuard from "@/components/AuthGuard";
 import StatsBlock from "@/components/StatsBlock";
 import { useLanguage } from "@/contexts/LanguageContext";
+import RightSidebar from "@/components/RightSidebar";
 
 export default function FeedPage() {
     const { connected, account } = useWallet();
@@ -102,7 +103,7 @@ export default function FeedPage() {
                 getGlobalPostsCount()
             ]);
             
-            console.log("Global posts count:", globalCount);
+            // console.log("Global posts count:", globalCount);
             setStats(statsData);
 
             if (globalCount === 0) {
@@ -459,14 +460,35 @@ export default function FeedPage() {
             </Head>
 
             {/* MainLayout applied in _app.tsx */}
-            <div className="grid grid-cols-1 gap-6">
+            <div className="w-full">
                 {/* CENTER: Feed */}
-                <div className="min-w-0 lg:px-6 pt-6">
+                <div className="w-full">
+                    <CreatePostForm 
+                        onPostCreated={(post) => {
+                            // Optimistic update handled by event listener
+                        }}
+                    />
+                    
+                    <div className="">
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--card-border)]">
+                            <h2 className="text-xl font-bold text-[var(--text-primary)]">{t.latestPosts}</h2>
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={fetchGlobalData}
+                                    className="p-2 text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--card-bg)] rounded-full transition-colors"
+                                    title={t.refreshFeed}
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
                                 
                                 {loadingGlobal && globalPosts.length === 0 ? (
-                                    <div className="space-y-4">
+                                    <div className="">
                                         {[1, 2, 3].map(i => (
-                                            <div key={i} className="bg-[var(--card-bg)] border border-[var(--card-border)] p-4 rounded-xl animate-pulse h-48">
+                                            <div key={i} className="bg-[var(--card-bg)] border-b border-[var(--card-border)] p-4 animate-pulse h-48">
                                                 <div className="flex gap-4">
                                                     <div className="w-12 h-12 rounded-full bg-[var(--card-border)]"></div>
                                                     <div className="flex-1 space-y-3">
@@ -518,7 +540,7 @@ export default function FeedPage() {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="p-12 text-center border-t border-[var(--card-border)]">
+                                    <div className="p-12 text-center">
                                         <div className="w-16 h-16 bg-[var(--card-border)] rounded-full flex items-center justify-center mx-auto mb-4">
                                             <svg className="w-8 h-8 text-[var(--text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
@@ -530,7 +552,8 @@ export default function FeedPage() {
                                 )}
                             </div>
                     </div>
+            </div>
                 
-                </AuthGuard>
+        </AuthGuard>
     );
 }

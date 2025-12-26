@@ -7,6 +7,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useWallet } from '@aptos-labs/wallet-adapter-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useNetwork } from '@/contexts/NetworkContext';
@@ -859,6 +860,7 @@ export default function ComposeModal({ isOpen, onClose, onPostCreated }: Compose
                     setShowScheduleModal(false);
                 }}
             />
-        </div>
+        </div>,
+        document.body
     );
 }

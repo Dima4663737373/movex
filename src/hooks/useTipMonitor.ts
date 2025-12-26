@@ -15,13 +15,13 @@ export function useTipMonitor() {
         const checkTips = async () => {
             try {
                 // Fetch tips where current user is the recipient
-                console.log(`🔍 Checking tips for ${account.address}...`);
+                // console.log(`🔍 Checking tips for ${account.address}...`);
                 const history = await getTipHistory(account.address.toString());
-                console.log(`📊 Found ${history.length} total tips`);
+                // console.log(`📊 Found ${history.length} total tips`);
 
                 // Debug: Log first few tips to check structure
                 if (history.length > 0) {
-                    console.log("First tip structure:", JSON.stringify(history[0], null, 2));
+                    // console.log("First tip structure:", JSON.stringify(history[0], null, 2));
                 }
 
                 // Filter for received tips only (case insensitive)
@@ -37,18 +37,18 @@ export function useTipMonitor() {
 
                     return normalizedReceiver === normalizedUser && tip.type === 'received';
                 });
-                console.log(`📥 Received tips: ${receivedTips.length}`);
+                // console.log(`📥 Received tips: ${receivedTips.length}`);
 
                 if (receivedTips.length === 0) return;
 
                 // Sort by timestamp descending
                 const latestTip = receivedTips[0];
                 const latestTimestamp = latestTip.timestamp;
-                console.log(`⏱️ Latest tip timestamp: ${latestTimestamp}, Last checked: ${lastTipTimestampRef.current}`);
+                // console.log(`⏱️ Latest tip timestamp: ${latestTimestamp}, Last checked: ${lastTipTimestampRef.current}`);
 
                 // On first load, just set the baseline
                 if (isFirstLoadRef.current) {
-                    console.log("🏁 First load, setting baseline.");
+                    // console.log("🏁 First load, setting baseline.");
                     lastTipTimestampRef.current = latestTimestamp;
                     isFirstLoadRef.current = false;
                     return;
@@ -56,7 +56,7 @@ export function useTipMonitor() {
 
                 // Check for new tips
                 if (latestTimestamp > lastTipTimestampRef.current) {
-                    console.log("🎉 NEW TIP DETECTED!");
+                    // console.log("🎉 NEW TIP DETECTED!");
                     
                     // Check if notifications are enabled
                     const notifyTips = localStorage.getItem('settings_notify_tips');
@@ -90,8 +90,8 @@ export function useTipMonitor() {
         // Check immediately
         checkTips();
 
-        // Poll every 5 seconds
-        const interval = setInterval(checkTips, 5000);
-        return () => clearInterval(interval);
+        // Removed automatic polling interval as requested by user
+        // const interval = setInterval(checkTips, 5000);
+        // return () => clearInterval(interval);
     }, [account?.address, addNotification]);
 }

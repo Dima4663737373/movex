@@ -671,8 +671,8 @@ export async function getStats() {
 
       const totalVolumeOctas = totalVolume;
 
-      console.log('📊 Contract volume (octas):', totalVolumeOctas);
-      console.log('📊 Contract volume (MOVE):', octasToMove(totalVolumeOctas));
+      // console.log('📊 Contract volume (octas):', totalVolumeOctas);
+      // console.log('📊 Contract volume (MOVE):', octasToMove(totalVolumeOctas));
       
       return {
         totalTips, // Placeholder
