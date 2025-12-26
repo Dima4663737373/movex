@@ -1,4 +1,4 @@
-module mines::move_feed_v10 {
+module mines::move_feed_v13 {
     use std::string::String;
     use std::vector;
     use std::signer;
@@ -21,6 +21,7 @@ module mines::move_feed_v10 {
         content: String,
         image_url: String,
         timestamp: u64,
+        is_deleted: bool,
     }
 
     struct Comment has store, drop, copy {
@@ -77,6 +78,7 @@ module mines::move_feed_v10 {
             content,
             image_url,
             timestamp: timestamp::now_seconds(),
+            is_deleted: false,
         };
         vector::push_back(&mut feed.posts, post);
         event::emit_event(&mut feed.post_events, PostEvent {
@@ -85,6 +87,23 @@ module mines::move_feed_v10 {
             content,
             timestamp: post.timestamp,
         });
+    }
+
+    public entry fun delete_post(account: &signer, post_id: u64) acquires GlobalFeed {
+        let author = signer::address_of(account);
+        let feed = borrow_global_mut<GlobalFeed>(@mines);
+        
+        let i = 0;
+        let len = vector::length(&feed.posts);
+        while (i < len) {
+            let post = vector::borrow_mut(&mut feed.posts, i);
+            if (post.id == post_id) {
+                assert!(post.author == author, 403);
+                post.is_deleted = true;
+                break
+            };
+            i = i + 1;
+        };
     }
 
     public entry fun create_comment(account: &signer, _parent_id_str: String, parent_id: u64, content: String, _image_url: String) acquires GlobalFeed {
@@ -109,12 +128,21 @@ module mines::move_feed_v10 {
         });
     }
 
-    // View Functions
-
     #[view]
     public fun get_global_posts_count(): u64 acquires GlobalFeed {
         if (exists<GlobalFeed>(@mines)) {
-            borrow_global<GlobalFeed>(@mines).post_counter
+             let feed = borrow_global<GlobalFeed>(@mines);
+             let count = 0;
+             let i = 0;
+             let len = vector::length(&feed.posts);
+             while (i < len) {
+                 let post = vector::borrow(&feed.posts, i);
+                 if (!post.is_deleted) {
+                     count = count + 1;
+                 };
+                 i = i + 1;
+             };
+             count
         } else {
             0
         }
@@ -131,7 +159,7 @@ module mines::move_feed_v10 {
         let len = vector::length(&feed.posts);
         while (i < len) {
             let post = vector::borrow(&feed.posts, i);
-            if (post.author == user_addr) {
+            if (post.author == user_addr && !post.is_deleted) {
                 count = count + 1;
             };
             i = i + 1;
@@ -148,12 +176,11 @@ module mines::move_feed_v10 {
         let total_count = 0;
         let user_posts = vector::empty<Post>();
         
-        // First count and collect indices (or just collect all then slice - less efficient but easier)
         let i = 0;
         let len = vector::length(&feed.posts);
         while (i < len) {
             let post = vector::borrow(&feed.posts, i);
-            if (post.author == user_addr) {
+            if (post.author == user_addr && !post.is_deleted) {
                 vector::push_back(&mut user_posts, *post);
                 total_count = total_count + 1;
             };
@@ -166,15 +193,7 @@ module mines::move_feed_v10 {
             return (result, total_count)
         };
         
-        // Reverse order for user posts too (Newest first)
-        // Logic below handles pagination from end to start
-
-        
         let skipped = page * limit;
-        if (skipped >= total_count) {
-             return (result, total_count)
-        };
-        
         let i = total_count - skipped;
         let end_threshold = 0;
         if (i > limit) {
@@ -195,15 +214,25 @@ module mines::move_feed_v10 {
             return (vector::empty(), 0)
         };
         let feed = borrow_global<GlobalFeed>(@mines);
-        let total_count = vector::length(&feed.posts);
         
+        let active_posts = vector::empty<Post>();
+        let i = 0;
+        let len = vector::length(&feed.posts);
+        while (i < len) {
+            let post = vector::borrow(&feed.posts, i);
+            if (!post.is_deleted) {
+                vector::push_back(&mut active_posts, *post);
+            };
+            i = i + 1;
+        };
+
+        let total_count = vector::length(&active_posts);
         let result = vector::empty<Post>();
         
         if (total_count == 0) {
             return (result, 0)
         };
 
-        // Newest first logic (Reverse iteration)
         let skipped = page * limit;
         if (skipped >= total_count) {
              return (result, total_count)
@@ -216,14 +245,13 @@ module mines::move_feed_v10 {
         };
 
         while (i > end_threshold) {
-            let post = vector::borrow(&feed.posts, i - 1);
+            let post = vector::borrow(&active_posts, i - 1);
             vector::push_back(&mut result, *post);
             i = i - 1;
         };
         
         (result, total_count)
     }
-
 
     #[view]
     public fun get_profile(user_addr: address): String acquires Profile {
@@ -252,31 +280,31 @@ module mines::move_feed_v10 {
 
     #[view]
     public fun get_global_tip_stats(): (u64, address, u64) {
-        (0, @0x0, 0) // Placeholder
+        (0, @0x0, 0) 
     }
 
     #[view]
     public fun get_user_tip_stats(_user_addr: address): (u64, u64, u64) {
-        (0, 0, 0) // Placeholder
+        (0, 0, 0) 
     }
 
     #[view]
     public fun get_post_by_id(post_id: u64): Post acquires GlobalFeed {
         let feed = borrow_global<GlobalFeed>(@mines);
-        // Optimization: if ids are sequential and 0-indexed matches vector index
         if (post_id < vector::length(&feed.posts)) {
             let post = vector::borrow(&feed.posts, post_id);
             if (post.id == post_id) {
+                if (post.is_deleted) abort 404;
                 return *post
             }
         };
         
-        // Fallback search
         let i = 0;
         let len = vector::length(&feed.posts);
         while (i < len) {
             let post = vector::borrow(&feed.posts, i);
             if (post.id == post_id) {
+                if (post.is_deleted) abort 404;
                 return *post
             };
             i = i + 1;

@@ -79,8 +79,8 @@ export const NETWORKS: Record<NetworkType, NetworkConfig> = {
         explorerUrl: "https://explorer.movementnetwork.xyz/?network=bardock+testnet",
         bridgeUrl: "https://bridge.testnet.movementnetwork.xyz/", // Assuming standard naming, or leave undefined
         // Testnet Module Address
-        moduleAddress: "0x0a9ee404e5582778c93a188b4ab011377073e3f72de6884b0d1a878c06488518",
-        minesAddress: "0x0a9ee404e5582778c93a188b4ab011377073e3f72de6884b0d1a878c06488518"
+        moduleAddress: "0x9cef2fdeac69283a0419d51fdf7ffd4430347c6aef63674282c8a3c97dbef204",
+        minesAddress: "0x9cef2fdeac69283a0419d51fdf7ffd4430347c6aef63674282c8a3c97dbef204"
     },
     /*
     mainnet: {

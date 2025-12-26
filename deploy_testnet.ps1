@@ -4,13 +4,20 @@
 Write-Output "=== Movement Testnet Deployment Helper ==="
 
 # Check CLI
-if (-not (Get-Command "aptos" -ErrorAction SilentlyContinue)) {
+$AptosPath = "aptos"
+if (Test-Path ".\aptos-cli\aptos.exe") {
+    $AptosPath = Resolve-Path ".\aptos-cli\aptos.exe"
+} elseif (Test-Path "..\aptos-cli\aptos.exe") {
+    $AptosPath = Resolve-Path "..\aptos-cli\aptos.exe"
+}
+
+if (-not (Get-Command $AptosPath -ErrorAction SilentlyContinue) -and -not (Test-Path $AptosPath)) {
     Write-Error "Aptos CLI is not installed or not in PATH."
     exit 1
 }
 
-$RPC_URL = "https://aptos.testnet.bardock.movementlabs.xyz/v1"
-$FAUCET_URL = "https://faucet.testnet.bardock.movementlabs.xyz" 
+$RPC_URL = "https://testnet.movementnetwork.xyz/v1"
+$FAUCET_URL = "https://faucet.testnet.movementnetwork.xyz" 
 
 # Create a temporary profile for deployment
 Write-Output "Initializing temporary profile..."
@@ -32,7 +39,7 @@ try {
     Set-Location $tempDir.FullName
     
     try {
-        aptos init --network custom --rest-url $RPC_URL --faucet-url $FAUCET_URL --assume-yes
+        & $AptosPath init --network custom --rest-url $RPC_URL --faucet-url $FAUCET_URL --assume-yes
     } finally {
         Set-Location $currentLoc
     }
@@ -81,7 +88,7 @@ try {
     Copy-Item -Path "$($tempDir.FullName)\.aptos" -Destination "." -Recurse -Force
 
     # Deploy to Movement
-    aptos move publish --named-addresses mines=$address --url $RPC_URL --assume-yes --bytecode-version 5
+    & $AptosPath move publish --named-addresses mines=$address --url $RPC_URL --assume-yes
 
     # Clean up .aptos in move directory
     Remove-Item -Path ".\.aptos" -Recurse -Force
