@@ -13,12 +13,12 @@ if (supabaseKey) {
         // Strategy 1: Split by space or comma
         let parts = supabaseKey.split(/[\s,]+/); 
         
-        // Strategy 2: If no spaces, check for concatenated JWTs (joined by dot)
+        // Strategy 2: Check for too many dots (malformed/concatenated key)
         if (parts.length === 1 && supabaseKey.includes('.')) {
              const dotParts = supabaseKey.split('.');
-             // A valid JWT has 3 parts (2 dots). A doubled one has 6 parts (5 dots) or more.
-             if (dotParts.length >= 6) {
-                 console.log("Detected dot-concatenated keys. extracting first key.");
+             // A valid JWT has 3 parts (2 dots). If we have more, it's likely malformed.
+             if (dotParts.length > 3) {
+                 console.log("Detected malformed key with too many parts. Extracting first 3 parts.");
                  parts = [dotParts.slice(0, 3).join('.')];
              }
         }

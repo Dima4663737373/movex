@@ -90,6 +90,10 @@ try {
     # Deploy to Movement
     & $AptosPath move publish --named-addresses mines=$address --url $RPC_URL --assume-yes
 
+    # Initialize the contract
+    Write-Output "Initializing contract..."
+    & $AptosPath move run --function-id "${address}::move_feed_v13::initialize" --url $RPC_URL --assume-yes
+
     # Clean up .aptos in move directory
     Remove-Item -Path ".\.aptos" -Recurse -Force
     
