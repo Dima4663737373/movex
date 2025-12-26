@@ -40,7 +40,7 @@ if (supabaseKey) {
 
 if (typeof window !== 'undefined') {
     console.log("Supabase Client Init - Key Length:", supabaseKey?.length);
-    if (supabaseKey?.length > 200) {
+    if ((supabaseKey?.length || 0) > 200) {
         console.warn("Supabase Key might still be too long!");
     }
 }

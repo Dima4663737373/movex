@@ -60,10 +60,8 @@ export default function AppsPage() {
                 <title>Mini Apps - MoveX</title>
             </Head>
 
-            <div className="grid grid-cols-1 gap-6">
-                    
-                    {/* CENTER CONTENT */}
-                    <div className="min-w-0 lg:px-6 pt-6">
+            {/* CENTER CONTENT */}
+            <div className="min-w-0 lg:px-6 pt-6">
                         {/* Page Title */}
                         <div className="mb-6 flex items-center justify-between">
                             <h2 className="text-2xl font-bold text-[var(--text-primary)]">Mini Apps</h2>
@@ -101,10 +99,9 @@ export default function AppsPage() {
                             <div className="border border-dashed border-[var(--card-border)] rounded-xl p-6 text-center text-[var(--text-secondary)]">
                                 <p className="text-sm">More apps coming soon...</p>
                                 <p className="text-xs mt-2 opacity-60">Developers: Use the SDK to build your own.</p>
-                            </div>
-                        </div>
+    </div>
                     </div>
-                </div>
+            </div>
         </AuthGuard>
     );
 }

@@ -171,7 +171,7 @@ export default function SettingsPage() {
             </Head>
 
             {/* Settings Content */}
-            <div className="max-w-3xl">
+            <div className="max-w-3xl p-6">
                         <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-8">{t.settings}</h1>
 
                         <div className="space-y-6">

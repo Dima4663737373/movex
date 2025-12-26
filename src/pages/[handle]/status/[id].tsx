@@ -142,11 +142,10 @@ export default function SinglePostPage() {
 
             {/* Header - Movement Labs Style */}
             <main className="container-custom py-6 md:py-10">
-                <div className="max-w-[1280px] mx-auto">
-                    <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-6 xl:divide-x xl:divide-[var(--card-border)]">
-                        
+                <div className="max-w-[800px] mx-auto">
+                    
                         {/* CENTER: Post & Comments */}
-                        <div className="min-w-0 lg:px-6">
+                        <div className="min-w-0">
                             {/* Header with Back Button */}
                             <div className="flex items-center gap-4 mb-6">
                                 <button onClick={() => router.back()} className="p-2 rounded-full hover:bg-[var(--hover-bg)] transition-colors">
@@ -252,17 +251,6 @@ export default function SinglePostPage() {
                                 </div>
                             )}
                         </div>
-
-                        {/* RIGHT SIDEBAR */}
-                        <div className="hidden xl:block xl:pl-6">
-                            <RightSidebar
-                                posts={[]} // Pass empty or fetch trending
-                                stats={stats}
-                                currentUserAddress={userAddress}
-                                profiles={profiles}
-                            />
-                        </div>
-                    </div>
                 </div>
             </main>
         </>

@@ -244,7 +244,7 @@ export default function MovementAIPage() {
                 <meta name="description" content="Movel - Your Movement Ecosystem Assistant" />
             </Head>
 
-            <div className="grid grid-cols-1 gap-6">
+            <div className="">
                     
                     {/* CENTER CONTENT - CHAT INTERFACE */}
                     <div className="min-w-0 lg:px-6 pt-6 flex flex-col h-[calc(100vh-140px)]">

@@ -101,7 +101,7 @@ export default function BookmarksPage() {
                 <title>{t.bookmarks} - MoveX</title>
             </Head>
 
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-6 pt-6">
                     
                     {/* CENTER CONTENT */}
                     <div className="min-w-0 lg:px-6">

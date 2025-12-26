@@ -153,6 +153,8 @@ interface Translations {
     noPostsDesc: string;
     noFeedTitle: string;
     noFeedDesc: string;
+    latestPosts: string;
+    refreshFeed: string;
     copyAddress: string;
     profileUpdated: string;
     profileUpdateError: string;
@@ -411,6 +413,8 @@ const translations: Record<Language, Translations> = {
         noPostsDesc: "This user hasn't posted anything yet.",
         noFeedTitle: 'No Posts Yet',
         noFeedDesc: 'Be the first to post something!',
+        latestPosts: 'Latest Posts',
+        refreshFeed: 'Refresh Feed',
         copyAddress: 'Copy Address',
         profileUpdated: 'Profile updated successfully!',
         profileUpdateError: 'Failed to update profile. Please try again.',
@@ -659,6 +663,8 @@ const translations: Record<Language, Translations> = {
         noPostsDesc: 'Цей користувач ще нічого не опублікував.',
         noFeedTitle: 'Поки немає постів',
         noFeedDesc: 'Будьте першим, хто щось опублікує!',
+        latestPosts: 'Останні пости',
+        refreshFeed: 'Оновити стрічку',
         copyAddress: 'Копіювати адресу',
         profileUpdated: 'Профіль оновлено!',
         profileUpdateError: 'Не вдалося оновити профіль. Спробуйте ще раз.',

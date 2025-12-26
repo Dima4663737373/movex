@@ -113,7 +113,7 @@ export default function ExplorePage() {
                 <title>Explore - MoveX</title>
             </Head>
 
-            <div className="grid grid-cols-1 gap-6">
+            <div className="pt-6">
                     
                     {/* CENTER: Trending Posts */}
                     <div className="min-w-0 lg:px-6">

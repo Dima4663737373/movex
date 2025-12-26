@@ -302,7 +302,7 @@ export default function RedPocketPage() {
                 <title>Red Pocket - MoveX</title>
             </Head>
 
-            <div className="max-w-[1280px] mx-auto min-h-screen">
+            <div className="max-w-[1280px] mx-auto min-h-screen lg:px-6 pt-6">
                 {/* Initialize Button for Owner */}
                 {!isInitialized && userAddress?.toLowerCase() === MODULE_ADDRESS?.toLowerCase() && (
                     <div className="mb-8 p-6 bg-yellow-500/10 border border-yellow-500/20 rounded-xl">

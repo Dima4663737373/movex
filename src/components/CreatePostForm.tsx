@@ -454,7 +454,7 @@ export function CreatePostForm({ onPostCreated, parentId, repostOf, parentAuthor
     };
 
     return (
-        <form onSubmit={handleSubmit} className="relative bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl p-4 mb-4">
+        <form onSubmit={handleSubmit} className="relative bg-[var(--card-bg)] border-b border-[var(--card-border)] p-4">
             <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">
                 {parentId ? t.leaveComment : repostOf ? t.quoteRepost : t.createPostTitle}
             </h2>

@@ -536,7 +536,7 @@ export default function ChatPage() {
             </Head>
 
             {/* MainLayout is applied in _app.tsx, so we just provide content */}
-            <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] h-full gap-y-8 lg:gap-x-0 lg:divide-x lg:divide-[var(--card-border)]">
+            <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] h-full gap-y-8 lg:gap-x-0 lg:divide-x lg:divide-[var(--card-border)] pt-6">
                 {/* MIDDLE: Conversations List */}
                 <div className={`flex flex-col h-full bg-[var(--bg-primary)] lg:px-6 ${activeContact ? 'hidden xl:flex' : 'flex'}`}>
                     <ConversationList

@@ -1,10 +1,12 @@
 import { useRouter } from 'next/router';
 import LeftSidebar from './LeftSidebar';
+import RightSidebar from './RightSidebar';
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { useWallet } from '@aptos-labs/wallet-adapter-react';
 import { useState, useEffect } from 'react';
-import { getDisplayName, getAvatar } from '@/lib/microThreadsClient';
+import { getDisplayName, getAvatar, getGlobalPosts, OnChainPost } from '@/lib/microThreadsClient';
+import { getStats } from '@/lib/movementClient';
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -33,6 +35,11 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     const [displayName, setDisplayName] = useState("");
     const [avatar, setAvatar] = useState("");
 
+    // Right Sidebar State
+    const [rsPosts, setRsPosts] = useState<OnChainPost[]>([]);
+    const [rsStats, setRsStats] = useState({ totalTips: 0, totalVolume: 0, topTipper: "" });
+    const [rsProfiles, setRsProfiles] = useState<Record<string, any>>({});
+
     const isChatPage = router.pathname === '/chat';
     // Use a slightly wider collapsed state if needed, or 80px. 
     // Standard sidebar is ~240px.
@@ -52,6 +59,41 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             }
         };
         fetchProfile();
+    }, [currentUserAddress]);
+
+    // Fetch Right Sidebar Data
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                // Fetch Stats
+                const statsData = await getStats();
+                setRsStats(statsData);
+
+                // Fetch Posts for suggestions
+                const posts = await getGlobalPosts(0, 20); // Fetch minimal posts
+                setRsPosts(posts);
+
+                // Fetch profiles for suggestions
+                const uniqueCreators = new Set<string>();
+                posts.forEach(p => {
+                    if (p.creator && p.creator !== currentUserAddress && p.creator !== "0x0") {
+                        uniqueCreators.add(p.creator);
+                    }
+                });
+
+                const profilesMap: Record<string, any> = {};
+                for (const creator of Array.from(uniqueCreators).slice(0, 5)) {
+                    const name = await getDisplayName(creator);
+                    const ava = await getAvatar(creator);
+                    profilesMap[creator] = { displayName: name, avatar: ava };
+                }
+                setRsProfiles(profilesMap);
+
+            } catch (e) {
+                console.error("Error fetching sidebar data", e);
+            }
+        };
+        fetchData();
     }, [currentUserAddress]);
 
     return (
@@ -76,9 +118,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             </header>
 
              <main className="container-custom pb-6 md:pb-10">
-                <div className="max-w-[1280px] mx-auto flex items-start gap-0 lg:gap-6">
+                <div className="max-w-[1280px] mx-auto flex items-stretch gap-0">
                     {/* Sidebar Container - Persistent & Animated */}
-                    <div className={`hidden lg:block pt-6 sticky top-[100px] h-[calc(100vh-100px)] shrink-0 transition-all duration-300 ease-in-out border-r border-[var(--card-border)] ${sidebarWidthClass}`}>
+                    <div className={`hidden lg:block pt-6 sticky top-[89px] h-[calc(100vh-89px)] shrink-0 transition-all duration-300 ease-in-out border-r border-[var(--card-border)] ${sidebarWidthClass}`}>
                         <LeftSidebar 
                             activePage={activePage} 
                             currentUserAddress={currentUserAddress} 
@@ -89,9 +131,21 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                     </div>
 
                     {/* Content Container */}
-                    <div className="flex-1 min-w-0 pt-6">
+                    <div className="flex-1 min-w-0 border-r border-[var(--card-border)]">
                         {children}
                     </div>
+
+                    {/* Right Sidebar - Persistent */}
+                    {!isChatPage && (
+                        <div className="hidden lg:block w-[350px] shrink-0 pt-6 pl-6 sticky top-[89px] h-[calc(100vh-89px)] overflow-y-auto hide-scrollbar">
+                            <RightSidebar 
+                                posts={rsPosts} 
+                                stats={rsStats} 
+                                currentUserAddress={currentUserAddress}
+                                profiles={rsProfiles}
+                            />
+                        </div>
+                    )}
                 </div>
              </main>
 
