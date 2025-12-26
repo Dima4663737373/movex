@@ -582,7 +582,16 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
     useEffect(() => {
         const checkBookmark = async () => {
             try {
-                const postId = post.global_id !== undefined ? post.global_id : post.id;
+                // Ignore if global_id is 0 (pending/optimistic post) to avoid matching with post 0
+                const effectiveGlobalId = (post.global_id !== undefined && post.global_id > 0) ? post.global_id : undefined;
+                const postId = effectiveGlobalId || post.id;
+                
+                // If it's a temporary ID, we can skip fetching from server as it won't be there
+                // unless we want to check if the user bookmarked the *temp* ID (unlikely)
+                if (!effectiveGlobalId && typeof postId === 'string' && (postId.startsWith('temp-') || postId.startsWith('pending-'))) {
+                    return;
+                }
+
                 let url = `/api/bookmarks?postId=${postId}`;
                 if (account?.address) {
                     url += `&userAddress=${account.address}`;

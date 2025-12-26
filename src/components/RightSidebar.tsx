@@ -56,13 +56,13 @@ export default function RightSidebar({ posts, stats, currentUserAddress, profile
                 <div className="space-y-3">
                     <div className="flex justify-between items-center">
                         <span className="text-[var(--text-secondary)]">{t.totalVolume}</span>
-                        <span className="font-mono font-bold text-[var(--text-primary)]">{stats.totalVolume.toFixed(2)} MOVE</span>
+                        <span className="font-mono font-bold text-[var(--text-primary)]">{(stats?.totalVolume || 0).toFixed(2)} MOVE</span>
                     </div>
                     <div className="flex justify-between items-center">
                         <span className="text-[var(--text-secondary)]">{t.totalTips}</span>
-                        <span className="font-mono font-bold text-[var(--text-primary)]">{stats.totalTips}</span>
+                        <span className="font-mono font-bold text-[var(--text-primary)]">{stats?.totalTips || 0}</span>
                     </div>
-                    {stats.topTipper !== "None" && (
+                    {stats?.topTipper && stats.topTipper !== "None" && (
                         <div className="pt-3 border-t border-[var(--card-border)]">
                             <span className="text-[var(--text-secondary)] text-sm block mb-1">{t.topTipper}</span>
                             <Link href={`/${stats.topTipper}`} className="font-mono font-bold text-[var(--accent)] hover:underline truncate block">

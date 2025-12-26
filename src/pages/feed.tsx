@@ -412,6 +412,26 @@ export default function FeedPage() {
 
     }, [connected, userAddress]);
 
+    // Clean up optimistic posts when they appear in global posts
+    useEffect(() => {
+        if (globalPosts.length > 0 && optimisticPosts.length > 0) {
+            setOptimisticPosts(prev => {
+                const globalIds = new Set(globalPosts.map(p => p.id));
+                // Keep optimistic posts that are NOT in global posts yet
+                // Also keep pending posts
+                return prev.filter(p => {
+                    // If it's pending, keep it
+                    if (p.status === 'pending') return true;
+                    // If it's success (has final ID), check if that ID is in global posts
+                    if (p.status === 'success' && globalIds.has(p.id)) {
+                        return false; // Remove, as it's now in global
+                    }
+                    return true; // Keep otherwise
+                });
+            });
+        }
+    }, [globalPosts]);
+
     // Calculate stats
     const totalTipsReceived = userPosts.reduce((acc, post) => acc + post.total_tips, 0);
     const totalTipsSent = tipHistory
