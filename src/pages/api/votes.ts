@@ -122,35 +122,51 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 return res.status(400).json({ error: 'Invalid request. Missing postId, creatorAddress, type, or userAddress.' });
             }
 
-            // Handle upsert manually to avoid "no unique constraint" error
-            // 1. Check if vote exists
-            const { data: existingVote, error: checkError } = await supabaseAdmin
+            // Handle vote toggle and duplicates robustly
+            // 1. Fetch ALL existing votes for this user/post to handle potential duplicates
+            const { data: existingVotes, error: checkError } = await supabaseAdmin
                 .from('votes')
-                .select('id')
+                .select('id, vote_type')
                 .eq('user_address', userAddress.toLowerCase())
-                .eq('post_id', postId)
-                .single();
+                .eq('post_id', postId);
 
-            if (checkError && checkError.code !== 'PGRST116') {
+            if (checkError) {
                  console.error("Supabase Error checking vote:", checkError);
                  return res.status(500).json({ error: checkError.message, code: checkError.code, details: checkError });
             }
 
-            let data, error;
-            if (existingVote) {
-                // Update
-                ({ data, error } = await supabaseAdmin
+            let data = null;
+            let userVoteStatus = null; // The final status to return (type or null)
+
+            // Check if we are toggling off (user clicked same type as existing)
+            // We look if ANY existing vote matches the requested type
+            const hasMatchingVote = existingVotes?.some(v => v.vote_type === type);
+
+            if (hasMatchingVote) {
+                // TOGGLE OFF: Delete ALL votes for this user/post (cleanup duplicates too)
+                const { error: deleteError } = await supabaseAdmin
                     .from('votes')
-                    .update({
-                        vote_type: type,
-                        created_at: new Date().toISOString()
-                    })
-                    .eq('id', existingVote.id)
-                    .select()
-                    .single());
+                    .delete()
+                    .eq('user_address', userAddress.toLowerCase())
+                    .eq('post_id', postId);
+
+                if (deleteError) {
+                    throw deleteError;
+                }
+                userVoteStatus = null;
             } else {
-                // Insert
-                ({ data, error } = await supabaseAdmin
+                // VOTE ON / SWITCH:
+                // If there are existing votes (e.g. 'down' when clicking 'up'), delete them first to be clean
+                if (existingVotes && existingVotes.length > 0) {
+                     await supabaseAdmin
+                        .from('votes')
+                        .delete()
+                        .eq('user_address', userAddress.toLowerCase())
+                        .eq('post_id', postId);
+                }
+
+                // Insert new vote
+                const { data: insertedData, error: insertError } = await supabaseAdmin
                     .from('votes')
                     .insert({
                         user_address: userAddress.toLowerCase(),
@@ -160,13 +176,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                         created_at: new Date().toISOString()
                     })
                     .select()
-                    .single());
+                    .single();
+                
+                if (insertError) throw insertError;
+                data = insertedData;
+                userVoteStatus = type;
             }
 
-            if (error) {
-                console.error("Supabase Error recording vote:", error);
-                return res.status(500).json({ error: error.message, code: error.code, details: error });
-            }
 
             // Fetch updated counts to return consistent response
             const { count: upCount } = await supabaseAdmin
@@ -186,7 +202,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 data, 
                 up: upCount || 0, 
                 down: downCount || 0, 
-                userVote: type 
+                userVote: userVoteStatus 
             });
         } else {
             res.setHeader('Allow', ['GET', 'POST']);
