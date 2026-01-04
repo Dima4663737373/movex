@@ -16,7 +16,7 @@ export function DailyCheckIn() {
 
     const config = getCurrentNetworkConfig();
     const minesAddress = config.minesAddress;
-    const moduleName = "daily_check_in_v10";
+    const moduleName = "daily_check_in_v12";
 
     // Load initial state from LocalStorage for instant feedback
     useEffect(() => {
