@@ -93,7 +93,7 @@ export default function ChallengesPage() {
             
             await signAndSubmitTransaction({
                 data: {
-                    function: `${minesAddress}::challenges_v10::join_challenge`,
+                    function: `${minesAddress}::challenges_v12::join_challenge`,
                     functionArguments: [challengeId]
                 }
             });

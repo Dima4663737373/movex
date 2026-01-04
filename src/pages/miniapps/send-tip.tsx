@@ -58,7 +58,7 @@ export default function SendTipPage() {
                                 💸
                             </div>
                             <div>
-                                <h2 className="text-xl font-bold">Send MVT</h2>
+                                <h2 className="text-xl font-bold">Send MOVE</h2>
                                 <p className="text-[var(--text-secondary)] text-sm">Support your favorite creators directly</p>
                             </div>
                         </div>

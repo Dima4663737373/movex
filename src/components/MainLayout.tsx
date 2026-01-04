@@ -30,6 +30,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     else if (path.includes('/settings')) activePage = 'settings';
     else if (path.includes('/apps')) activePage = 'apps';
     else if (path.includes('/movement-ai')) activePage = 'movement-ai';
+    else if (path.includes('/launchpad')) activePage = 'launchpad';
     
     // Profile State for Sidebar
     const [displayName, setDisplayName] = useState("");
@@ -41,6 +42,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     const [rsProfiles, setRsProfiles] = useState<Record<string, any>>({});
 
     const isChatPage = router.pathname === '/chat';
+    const isLaunchpadPage = router.pathname.includes('/launchpad');
+    const hideRightSidebar = isChatPage || isLaunchpadPage;
+
     // Use a slightly wider collapsed state if needed, or 80px. 
     // Standard sidebar is ~240px.
     const sidebarWidthClass = isChatPage ? 'lg:w-[80px]' : 'lg:w-[240px]';
@@ -120,7 +124,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
              <main className="container-custom pb-6 md:pb-10">
                 <div className="max-w-[1280px] mx-auto flex items-stretch gap-0">
                     {/* Sidebar Container - Persistent & Animated */}
-                    <div className={`hidden lg:block pt-6 sticky top-[89px] h-[calc(100vh-89px)] shrink-0 transition-all duration-300 ease-in-out border-r border-[var(--card-border)] ${sidebarWidthClass}`}>
+                    <div className={`hidden lg:block pt-6 sticky top-[89px] h-[calc(100vh-89px)] shrink-0 transition-all duration-300 ease-in-out border-r border-[var(--card-border)] bg-[var(--bg-primary)] z-30 ${sidebarWidthClass}`}>
                         <LeftSidebar 
                             activePage={activePage} 
                             currentUserAddress={currentUserAddress} 
@@ -131,13 +135,13 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                     </div>
 
                     {/* Content Container */}
-                    <div className="flex-1 min-w-0 border-r border-[var(--card-border)]">
+                    <div className="flex-1 min-w-0 border-r border-[var(--card-border)] relative z-0">
                         {children}
                     </div>
 
                     {/* Right Sidebar - Persistent */}
-                    {!isChatPage && (
-                        <div className="hidden lg:block w-[350px] shrink-0 pt-6 pl-6 sticky top-[89px] h-[calc(100vh-89px)] overflow-y-auto hide-scrollbar">
+                    {!hideRightSidebar && (
+                        <div className="hidden lg:block w-[350px] shrink-0 pt-6 pl-6 sticky top-[89px] h-[calc(100vh-89px)] overflow-y-auto hide-scrollbar bg-[var(--bg-primary)] z-30">
                             <RightSidebar 
                                 posts={rsPosts} 
                                 stats={rsStats} 

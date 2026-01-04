@@ -8,7 +8,7 @@ import { getCurrentNetworkConfig, MOVEMENT_TESTNET_RPC } from "@/lib/movement";
 import { moveToOctas, octasToMove } from "@/lib/movement";
 
 // Module Constants
-const MODULE_NAME = "red_packet_v10";
+const MODULE_NAME = "red_packet_v12";
 const RESOURCE_ACCOUNT_SEED = new Uint8Array([7]); // x"07"
 
 interface RedPocket {
@@ -205,7 +205,7 @@ export default function RedPocketPage() {
                 
                 const balance = parseInt(balanceResource.coin.value);
                 if (balance < amountOctas) {
-                    addNotification(`Insufficient balance. You have ${octasToMove(balance)} MVT, but tried to send ${amount}.`, "error");
+                    addNotification(`Insufficient balance. You have ${octasToMove(balance)} MOVE, but tried to send ${amount}.`, "error");
                     setIsCreating(false);
                     return;
                 }
@@ -359,7 +359,7 @@ export default function RedPocketPage() {
                             !createdCode ? (
                                 <div className="space-y-6 max-w-md mx-auto">
                                     <div className="space-y-2">
-                                        <label className="text-sm font-medium text-[var(--text-secondary)]">Total Amount (MVT)</label>
+                                        <label className="text-sm font-medium text-[var(--text-secondary)]">Total Amount (MOVE)</label>
                                         <input
                                             type="number"
                                             value={amount}
@@ -492,7 +492,7 @@ export default function RedPocketPage() {
                                         <p className="text-[var(--text-secondary)] mb-6">You received a gift.</p>
                                         
                                         <div className="text-4xl font-bold text-[var(--accent)] mb-8">
-                                            {claimResult.amount} <span className="text-xl text-[var(--text-secondary)]">MVT</span>
+                                            {claimResult.amount} <span className="text-xl text-[var(--text-secondary)]">MOVE</span>
                                         </div>
 
                                         <button

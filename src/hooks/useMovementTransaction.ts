@@ -64,7 +64,7 @@ export function useMovementTransaction() {
             // Call Donations contract
             const payload: InputTransactionData = {
                 data: {
-                    function: `${moduleAddress}::donations_v10::send_tip`,
+                    function: `${moduleAddress}::donations_v12::send_tip`,
                     typeArguments: [],
                     functionArguments: [recipient, amountInOctas.toString()]
                 }

@@ -35,7 +35,7 @@ function getClient() {
     return new Aptos(config);
 }
 
-const MODULE_NAME = "move_feed_v13";
+const MODULE_NAME = "move_feed_v12";
 
 // Helper to safely extract string from Move String or raw string
 const getString = (val: any): string => {
