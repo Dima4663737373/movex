@@ -1,7 +1,6 @@
 /// This module defines a struct storing the metadata of the block and new block events.
 module aptos_framework::block {
     use std::error;
-    use std::features;
     use std::vector;
     use std::option;
     use aptos_std::table_with_length::{Self, TableWithLength};
@@ -16,7 +15,6 @@ module aptos_framework::block {
     use aptos_framework::state_storage;
     use aptos_framework::system_addresses;
     use aptos_framework::timestamp;
-    use aptos_framework::transaction_fee;
 
     friend aptos_framework::genesis;
 
@@ -55,6 +53,27 @@ module aptos_framework::block {
 
     /// Event emitted when a proposal is created.
     struct UpdateEpochIntervalEvent has drop, store {
+        old_epoch_interval: u64,
+        new_epoch_interval: u64,
+    }
+
+    #[event]
+    /// Should be in-sync with NewBlockEvent rust struct in new_block.rs
+    struct NewBlock has drop, store {
+        hash: address,
+        epoch: u64,
+        round: u64,
+        height: u64,
+        previous_block_votes_bitvec: vector<u8>,
+        proposer: address,
+        failed_proposer_indices: vector<u64>,
+        /// On-chain time during the block at the given height
+        time_microseconds: u64,
+    }
+
+    #[event]
+    /// Event emitted when a proposal is created.
+    struct UpdateEpochInterval has drop, store {
         old_epoch_interval: u64,
         new_epoch_interval: u64,
     }
@@ -113,10 +132,16 @@ module aptos_framework::block {
         let old_epoch_interval = block_resource.epoch_interval;
         block_resource.epoch_interval = new_epoch_interval;
 
-        event::emit_event<UpdateEpochIntervalEvent>(
-            &mut block_resource.update_epoch_interval_events,
-            UpdateEpochIntervalEvent { old_epoch_interval, new_epoch_interval },
-        );
+        if (std::features::module_event_migration_enabled()) {
+            event::emit(
+                UpdateEpochInterval { old_epoch_interval, new_epoch_interval },
+            );
+        } else {
+            event::emit_event<UpdateEpochIntervalEvent>(
+                &mut block_resource.update_epoch_interval_events,
+                UpdateEpochIntervalEvent { old_epoch_interval, new_epoch_interval },
+            );
+        };
     }
 
     #[view]
@@ -164,15 +189,6 @@ module aptos_framework::block {
             time_microseconds: timestamp,
         };
         emit_new_block_event(vm, &mut block_metadata_ref.new_block_events, new_block_event);
-
-        if (features::collect_and_distribute_gas_fees()) {
-            // Assign the fees collected from the previous block to the previous block proposer.
-            // If for any reason the fees cannot be assigned, this function burns the collected coins.
-            transaction_fee::process_collected_fees();
-            // Set the proposer of this block as the receiver of the fees, so that the fees for this
-            // block are assigned to the right account.
-            transaction_fee::register_proposer_for_fee_collection(proposer);
-        };
 
         // Performance scores have to be updated before the epoch transition as the transaction that triggers the
         // transition is the last block in the previous epoch.
@@ -230,6 +246,14 @@ module aptos_framework::block {
         };
     }
 
+    fun block_epilogue(
+        vm: &signer,
+        fee_distribution_validator_indices: vector<u64>,
+        fee_amounts_octa: vector<u64>,
+    ) {
+        stake::record_fee(vm, fee_distribution_validator_indices, fee_amounts_octa);
+    }
+
     #[view]
     /// Get the current block height
     public fun get_current_block_height(): u64 acquires BlockResource {
@@ -237,7 +261,11 @@ module aptos_framework::block {
     }
 
     /// Emit the event and update height and global timestamp
-    fun emit_new_block_event(vm: &signer, event_handle: &mut EventHandle<NewBlockEvent>, new_block_event: NewBlockEvent) acquires CommitHistory {
+    fun emit_new_block_event(
+        vm: &signer,
+        event_handle: &mut EventHandle<NewBlockEvent>,
+        new_block_event: NewBlockEvent,
+    ) acquires CommitHistory {
         if (exists<CommitHistory>(@aptos_framework)) {
             let commit_history_ref = borrow_global_mut<CommitHistory>(@aptos_framework);
             let idx = commit_history_ref.next_idx;
@@ -275,7 +303,7 @@ module aptos_framework::block {
                 proposer: @vm_reserved,
                 failed_proposer_indices: vector::empty(),
                 time_microseconds: 0,
-            }
+            },
         );
     }
 
@@ -298,7 +326,7 @@ module aptos_framework::block {
                 proposer: @vm_reserved,
                 failed_proposer_indices: vector::empty(),
                 time_microseconds: timestamp::now_microseconds(),
-            }
+            },
         );
     }
 

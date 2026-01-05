@@ -1,0 +1,9 @@
+[package]
+name = "Hello"
+version = "1.0.0"
+
+[addresses]
+mines = "0x9cef2fdeac69283a0419d51fdf7ffd4430347c6aef63674282c8a3c97dbef204"
+
+[dependencies]
+AptosFramework = { git = "https://github.com/movementlabsxyz/aptos-core.git", subdir = "aptos-move/framework/aptos-framework", rev = "mainnet" }

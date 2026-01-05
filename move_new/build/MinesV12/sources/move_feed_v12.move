@@ -279,7 +279,6 @@ module mines::move_feed_v12 {
         }
     }
 
-    #[view]
     public fun get_user_tip_stats(user_addr: address): (u64, u64, u64) {
         if (exists<GlobalFeed>(@mines)) {
              let tips = donations_v12::get_author_tips(user_addr);

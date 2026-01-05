@@ -7,6 +7,7 @@ module aptos_framework::genesis {
 
     use aptos_framework::account;
     use aptos_framework::aggregator_factory;
+    use aptos_framework::aptos_account;
     use aptos_framework::aptos_coin::{Self, AptosCoin};
     use aptos_framework::aptos_governance;
     use aptos_framework::block;
@@ -17,6 +18,7 @@ module aptos_framework::genesis {
     use aptos_framework::execution_config;
     use aptos_framework::create_signer::create_signer;
     use aptos_framework::gas_schedule;
+    use aptos_framework::nonce_validation;
     use aptos_framework::reconfiguration;
     use aptos_framework::stake;
     use aptos_framework::staking_contract;
@@ -92,7 +94,6 @@ module aptos_framework::genesis {
             b"multi_agent_script_prologue",
             b"epilogue",
         );
-
         // Give the decentralized on-chain governance control over the core framework account.
         aptos_governance::store_signer_cap(&aptos_framework_account, @aptos_framework, aptos_framework_signer_cap);
 
@@ -108,6 +109,8 @@ module aptos_framework::genesis {
         execution_config::set(&aptos_framework_account, execution_config);
         version::initialize(&aptos_framework_account, initial_version);
         stake::initialize(&aptos_framework_account);
+        stake::initialize_pending_transaction_fee(&aptos_framework_account);
+        timestamp::set_time_has_started(&aptos_framework_account);
         staking_config::initialize(
             &aptos_framework_account,
             minimum_stake,
@@ -123,18 +126,21 @@ module aptos_framework::genesis {
 
         // Ensure we can create aggregators for supply, but not enable it for common use just yet.
         aggregator_factory::initialize_aggregator_factory(&aptos_framework_account);
-        coin::initialize_supply_config(&aptos_framework_account);
 
         chain_id::initialize(&aptos_framework_account, chain_id);
         reconfiguration::initialize(&aptos_framework_account);
         block::initialize(&aptos_framework_account, epoch_interval_microsecs);
         state_storage::initialize(&aptos_framework_account);
-        timestamp::set_time_has_started(&aptos_framework_account);
+        nonce_validation::initialize(&aptos_framework_account);
     }
 
     /// Genesis step 2: Initialize Aptos coin.
     fun initialize_aptos_coin(aptos_framework: &signer) {
         let (burn_cap, mint_cap) = aptos_coin::initialize(aptos_framework);
+
+        coin::create_coin_conversion_map(aptos_framework);
+        coin::create_pairing<AptosCoin>(aptos_framework);
+
         // Give stake module MintCapability<AptosCoin> so it can mint rewards.
         stake::store_aptos_coin_mint_cap(aptos_framework, mint_cap);
         // Give transaction_fee module BurnCapability<AptosCoin> so it can burn gas.
@@ -149,6 +155,10 @@ module aptos_framework::genesis {
         core_resources_auth_key: vector<u8>,
     ) {
         let (burn_cap, mint_cap) = aptos_coin::initialize(aptos_framework);
+
+        coin::create_coin_conversion_map(aptos_framework);
+        coin::create_pairing<AptosCoin>(aptos_framework);
+
         // Give stake module MintCapability<AptosCoin> so it can mint rewards.
         stake::store_aptos_coin_mint_cap(aptos_framework, mint_cap);
         // Give transaction_fee module BurnCapability<AptosCoin> so it can burn gas.
@@ -158,6 +168,7 @@ module aptos_framework::genesis {
 
         let core_resources = account::create_account(@core_resources);
         account::rotate_authentication_key_internal(&core_resources, core_resources_auth_key);
+        aptos_account::register_apt(&core_resources); // registers APT store
         aptos_coin::configure_accounts_for_test(aptos_framework, &core_resources, mint_cap);
     }
 
@@ -182,14 +193,17 @@ module aptos_framework::genesis {
     /// This creates an funds an account if it doesn't exist.
     /// If it exists, it just returns the signer.
     fun create_account(aptos_framework: &signer, account_address: address, balance: u64): signer {
-        if (account::exists_at(account_address)) {
+        let account = if (account::exists_at(account_address)) {
             create_signer(account_address)
         } else {
-            let account = account::create_account(account_address);
+            account::create_account(account_address)
+        };
+
+        if (coin::balance<AptosCoin>(account_address) == 0) {
             coin::register<AptosCoin>(&account);
             aptos_coin::mint(aptos_framework, account_address, balance);
-            account
-        }
+        };
+        account
     }
 
     fun create_employee_validators(
@@ -260,6 +274,8 @@ module aptos_framework::genesis {
             };
 
             let validator = &employee_group.validator.validator_config;
+            // These checks ensure that validator accounts have 0x1::Account resource.
+            // So, validator accounts can't be stateless.
             assert!(
                 account::exists_at(validator.owner_address),
                 error::not_found(EACCOUNT_DOES_NOT_EXIST),
@@ -508,5 +524,33 @@ module aptos_framework::genesis {
 
         create_account(aptos_framework, addr0, 23456);
         assert!(coin::balance<AptosCoin>(addr0) == 12345, 2);
+    }
+
+    #[test(aptos_framework = @0x1, root = @0xabcd)]
+    fun test_create_root_account(aptos_framework: &signer) {
+        use aptos_framework::aggregator_factory;
+        use aptos_framework::object;
+        use aptos_framework::primary_fungible_store;
+        use aptos_framework::fungible_asset::Metadata;
+        use std::features;
+
+        let feature = features::get_new_accounts_default_to_fa_apt_store_feature();
+        features::change_feature_flags_for_testing(aptos_framework, vector[feature], vector[]);
+
+        aggregator_factory::initialize_aggregator_factory_for_test(aptos_framework);
+
+        let (burn_cap, mint_cap) = aptos_coin::initialize(aptos_framework);
+        aptos_coin::ensure_initialized_with_apt_fa_metadata_for_test();
+
+        let core_resources = account::create_account(@core_resources);
+        aptos_account::register_apt(&core_resources); // registers APT store
+
+        let apt_metadata = object::address_to_object<Metadata>(@aptos_fungible_asset);
+        assert!(primary_fungible_store::primary_store_exists(@core_resources, apt_metadata), 2);
+
+        aptos_coin::configure_accounts_for_test(aptos_framework, &core_resources, mint_cap);
+
+        coin::destroy_burn_cap(burn_cap);
+        coin::destroy_mint_cap(mint_cap);
     }
 }
