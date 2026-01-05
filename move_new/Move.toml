@@ -4,7 +4,7 @@ version = "1.0.0"
 upgrade_policy = "compatible"
 
 [addresses]
-mines = "0x0a9ee404e5582778c93a188b4ab011377073e3f72de6884b0d1a878c06488518"
+mines = "0x9cef2fdeac69283a0419d51fdf7ffd4430347c6aef63674282c8a3c97dbef204"
 
 [dependencies]
 AptosFramework = { local = "../libs/aptos-core/aptos-move/framework/aptos-framework" }
