@@ -46,7 +46,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     const isFullHeightPage = isChatPage || isSavedPage;
 
     const isLaunchpadPage = router.pathname.includes('/launchpad');
-    const hideRightSidebar = isLaunchpadPage;
+    const hideRightSidebar = isChatPage || isLaunchpadPage;
 
     // Use a slightly wider collapsed state if needed, or 80px. 
     // Standard sidebar is ~240px.
@@ -107,8 +107,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         <div className={`bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans ${isFullHeightPage ? 'h-screen overflow-hidden flex flex-col' : 'min-h-screen'}`}>
              {/* Header - Movement Labs Style */}
              <header className={`border-b border-[var(--card-border)] bg-[var(--card-bg)] z-40 transition-colors duration-300 ${isFullHeightPage ? 'flex-none' : 'sticky top-0'}`}>
-                <div className={`${isChatPage ? 'w-full px-6' : 'container-custom'} py-6`}>
-                    <div className={`${isChatPage ? 'w-full' : 'max-w-[1280px] mx-auto'} flex items-center justify-between`}>
+                <div className="container-custom py-6">
+                    <div className="max-w-[1280px] mx-auto flex items-center justify-between">
                         <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push('/feed')}>
                             <div className="w-10 h-10 bg-[var(--accent)] rounded-lg flex items-center justify-center shadow-lg">
                                 <span className="text-black font-bold text-xl">M</span>
@@ -124,8 +124,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                 </div>
             </header>
 
-             <main className={`${isChatPage ? 'w-full' : 'container-custom'} ${isFullHeightPage ? 'flex-1 overflow-hidden pb-0' : 'pb-6 md:pb-10'}`}>
-               <div className={`${isChatPage ? 'w-full' : 'max-w-[1280px] mx-auto'} flex items-stretch gap-0 ${isFullHeightPage ? 'h-full' : ''}`}>
+             <main className={`container-custom ${isFullHeightPage ? 'flex-1 overflow-hidden pb-0' : 'pb-6 md:pb-10'}`}>
+                <div className={`max-w-[1280px] mx-auto flex items-stretch gap-0 ${isFullHeightPage ? 'h-full' : ''}`}>
                     {/* Sidebar Container - Persistent & Animated */}
                     <div className={`hidden lg:block pt-6 transition-all duration-300 ease-in-out border-r border-[var(--card-border)] bg-[var(--bg-primary)] z-30 ${sidebarWidthClass} ${isFullHeightPage ? 'h-full overflow-y-auto' : 'sticky top-[89px] h-[calc(100vh-89px)] shrink-0'}`}>
                         <LeftSidebar 
