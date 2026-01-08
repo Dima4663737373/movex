@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+    html {
+        scrollbar-gutter: stable;
+    }
+
     :root {
         /* Default (Dark) - Pure Black/Zinc */
         --bg-primary: #000000;

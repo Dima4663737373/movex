@@ -547,9 +547,9 @@ export default function ChatPage() {
             </Head>
 
             {/* MainLayout is applied in _app.tsx, so we just provide content */}
-            <div className="grid grid-cols-1 md:grid-cols-[350px_1fr] h-full md:gap-x-0 md:divide-x md:divide-[var(--card-border)]">
+            <div className="grid grid-cols-1 md:grid-cols-[350px_1fr] lg:grid-cols-1 xl:grid-cols-[350px_1fr] h-full md:gap-x-0 md:divide-x lg:divide-x-0 xl:divide-x md:divide-[var(--card-border)]">
                 {/* MIDDLE: Conversations List */}
-                <div className={`flex flex-col h-full bg-[var(--bg-primary)] pt-6 md:px-6 ${activeContact ? 'hidden md:flex' : 'flex'}`}>
+                <div className={`flex flex-col h-full bg-[var(--bg-primary)] pt-6 md:px-6 ${activeContact ? 'hidden md:flex lg:hidden xl:flex' : 'flex'}`}>
                     <ConversationList
                         conversations={conversations}
                         activeContact={activeContact}
@@ -561,7 +561,7 @@ export default function ChatPage() {
                 </div>
 
                 {/* RIGHT: Chat Window */}
-                <div className={`flex flex-col h-full pt-6 md:px-6 ${!activeContact ? 'hidden md:flex' : 'flex'}`}>
+                <div className={`flex flex-col h-full pt-6 md:px-6 ${!activeContact ? 'hidden md:flex lg:hidden xl:flex' : 'flex'}`}>
                     {!activeContact ? (
                         <div className="flex-1 flex flex-col items-center justify-center text-center text-[var(--text-secondary)]">
                             <div className="w-20 h-20 bg-[var(--card-border)] rounded-full flex items-center justify-center mx-auto mb-4">
@@ -580,7 +580,7 @@ export default function ChatPage() {
                                     <div className="flex items-center gap-3 pb-4 border-b border-[var(--card-border)] mb-4">
                                         <button 
                                             onClick={() => handleContactSelect(null)}
-                                            className="md:hidden p-2 -ml-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                            className="md:hidden lg:block xl:hidden p-2 -ml-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                                         >
                                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
