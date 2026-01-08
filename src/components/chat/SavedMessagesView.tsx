@@ -210,7 +210,7 @@ export default function SavedMessagesView() {
             {/* Messages List */}
             <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar pb-4 min-h-0">
                 {loading ? (
-                    <div className="flex justify-center p-8">
+                    <div className="flex items-center justify-center h-full">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent)]"></div>
                     </div>
                 ) : messages.length === 0 ? (
