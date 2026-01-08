@@ -33,30 +33,6 @@ export default function ConversationList({
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-2 pr-2">
-                {/* Saved Messages Item */}
-                <button
-                    onClick={() => setActiveContact('saved')}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl transition-colors text-left ${
-                        activeContact === 'saved' ? 'bg-[var(--accent)]/10 border border-[var(--accent)]/20' : 'hover:bg-[var(--hover-bg)]'
-                    }`}
-                >
-                    <div className="w-12 h-12 rounded-full bg-[var(--accent)]/20 flex items-center justify-center flex-shrink-0 text-[var(--accent)]">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                        </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-baseline">
-                            <span className={`font-bold truncate ${activeContact === 'saved' ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]'}`}>
-                                Saved Messages
-                            </span>
-                        </div>
-                        <p className="text-sm text-[var(--text-secondary)] truncate">
-                            Your personal notes
-                        </p>
-                    </div>
-                </button>
-
                 {conversations.length === 0 ? (
                     <div className="text-center py-10 text-[var(--text-secondary)]">
                         <p>No conversations yet</p>

@@ -16,7 +16,6 @@ import CalendarModal from "@/components/CalendarModal";
 import { useNotifications } from "@/components/Notifications";
 import { useChat } from "@/contexts/ChatContext";
 import ConversationList from "@/components/chat/ConversationList";
-import SavedMessagesView from "@/components/chat/SavedMessagesView";
 import { Message, Conversation, Profile } from "@/types/chat";
 
 export default function ChatPage() {
@@ -572,8 +571,6 @@ export default function ChatPage() {
                             <p className="text-xl font-bold">Select a conversation</p>
                             <p>Choose a contact to start chatting</p>
                         </div>
-                    ) : activeContact === 'saved' ? (
-                        <SavedMessagesView />
                     ) : (
                         <>
                             {/* Chat Header */}

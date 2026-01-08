@@ -46,7 +46,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     const isFullHeightPage = isChatPage || isSavedPage;
 
     const isLaunchpadPage = router.pathname.includes('/launchpad');
-    const hideRightSidebar = isLaunchpadPage;
+    const hideRightSidebar = isChatPage || isSavedPage || isLaunchpadPage;
 
     // Use a slightly wider collapsed state if needed, or 80px. 
     // Standard sidebar is ~240px.
