@@ -12,7 +12,7 @@ compiled_package_info:
     std: "0000000000000000000000000000000000000000000000000000000000000001"
     vm: "0000000000000000000000000000000000000000000000000000000000000000"
     vm_reserved: "0000000000000000000000000000000000000000000000000000000000000000"
-  source_digest: FE5DCC38CE540FB5B9F2831A1843968D68E5413081AFF4C1D772AE78DEFEF7C2
+  source_digest: C4ACEE53294A7117688323DD8E9AB80DB665240BBFFC736095B3D27EFDE5C4F6
   build_flags:
     dev_mode: false
     test_mode: false
@@ -20,15 +20,16 @@ compiled_package_info:
     generate_docs: false
     generate_abis: false
     generate_move_model: true
-    full_model_generation: true
+    full_model_generation: false
     install_dir: ~
     force_recompilation: false
     additional_named_addresses:
       mines: 9cef2fdeac69283a0419d51fdf7ffd4430347c6aef63674282c8a3c97dbef204
+    architecture: ~
     fetch_deps_only: false
     skip_fetch_latest_git_deps: false
     compiler_config:
-      bytecode_version: 7
+      bytecode_version: ~
       known_attributes:
         - bytecode_instruction
         - deprecated
@@ -37,11 +38,7 @@ compiled_package_info:
         - "fmt::skip"
         - legacy_entry_fun
         - "lint::allow_unsafe_randomness"
-        - "lint::skip"
-        - module_lock
-        - "mutation::skip"
         - native_interface
-        - persistent
         - randomness
         - resource_group
         - resource_group_member
@@ -50,12 +47,9 @@ compiled_package_info:
         - verify_only
         - view
       skip_attribute_checks: false
-      compiler_version: V2_0
-      language_version: "2.1"
-      experiments:
-        - optimize=on
+      compiler_version: ~
+      language_version: ~
 dependencies:
   - AptosFramework
   - AptosStdlib
   - MoveStdlib
-bytecode_deps: []

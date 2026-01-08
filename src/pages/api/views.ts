@@ -14,6 +14,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             return res.status(400).json({ error: 'Post ID is required' });
         }
 
+        const pid = postId as string;
+        if (pid.startsWith('temp-') || pid.startsWith('pending-')) {
+             return res.status(200).json({ viewCount: 0 });
+        }
+
         const { data, error } = await supabaseAdmin
             .from('post_views')
             .select('view_count')

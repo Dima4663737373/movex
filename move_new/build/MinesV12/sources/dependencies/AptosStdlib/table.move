@@ -7,7 +7,6 @@
 
 module aptos_std::table {
     friend aptos_std::table_with_length;
-    friend aptos_std::storage_slots_allocator;
 
     /// Type of tables
     struct Table<phantom K: copy + drop, phantom V> has store {
@@ -24,75 +23,73 @@ module aptos_std::table {
     /// Add a new entry to the table. Aborts if an entry for this
     /// key already exists. The entry itself is not stored in the
     /// table, and cannot be discovered from it.
-    public fun add<K: copy + drop, V>(self: &mut Table<K, V>, key: K, val: V) {
-        add_box<K, V, Box<V>>(self, key, Box { val })
+    public fun add<K: copy + drop, V>(table: &mut Table<K, V>, key: K, val: V) {
+        add_box<K, V, Box<V>>(table, key, Box { val })
     }
 
     /// Acquire an immutable reference to the value which `key` maps to.
     /// Aborts if there is no entry for `key`.
-    public fun borrow<K: copy + drop, V>(self: &Table<K, V>, key: K): &V {
-        &borrow_box<K, V, Box<V>>(self, key).val
+    public fun borrow<K: copy + drop, V>(table: &Table<K, V>, key: K): &V {
+        &borrow_box<K, V, Box<V>>(table, key).val
     }
 
     /// Acquire an immutable reference to the value which `key` maps to.
     /// Returns specified default value if there is no entry for `key`.
-    public fun borrow_with_default<K: copy + drop, V>(self: &Table<K, V>, key: K, default: &V): &V {
-        if (!self.contains(copy key)) {
+    public fun borrow_with_default<K: copy + drop, V>(table: &Table<K, V>, key: K, default: &V): &V {
+        if (!contains(table, copy key)) {
             default
         } else {
-            self.borrow(copy key)
+            borrow(table, copy key)
         }
     }
 
     /// Acquire a mutable reference to the value which `key` maps to.
     /// Aborts if there is no entry for `key`.
-    public fun borrow_mut<K: copy + drop, V>(self: &mut Table<K, V>, key: K): &mut V {
-        &mut borrow_box_mut<K, V, Box<V>>(self, key).val
+    public fun borrow_mut<K: copy + drop, V>(table: &mut Table<K, V>, key: K): &mut V {
+        &mut borrow_box_mut<K, V, Box<V>>(table, key).val
     }
 
     /// Acquire a mutable reference to the value which `key` maps to.
     /// Insert the pair (`key`, `default`) first if there is no entry for `key`.
-    public fun borrow_mut_with_default<K: copy + drop, V: drop>(self: &mut Table<K, V>, key: K, default: V): &mut V {
-        if (!self.contains(copy key)) {
-            self.add(copy key, default)
+    public fun borrow_mut_with_default<K: copy + drop, V: drop>(table: &mut Table<K, V>, key: K, default: V): &mut V {
+        if (!contains(table, copy key)) {
+            add(table, copy key, default)
         };
-        self.borrow_mut(key)
+        borrow_mut(table, key)
     }
 
     /// Insert the pair (`key`, `value`) if there is no entry for `key`.
     /// update the value of the entry for `key` to `value` otherwise
-    public fun upsert<K: copy + drop, V: drop>(self: &mut Table<K, V>, key: K, value: V) {
-        if (!self.contains(copy key)) {
-            self.add(copy key, value)
+    public fun upsert<K: copy + drop, V: drop>(table: &mut Table<K, V>, key: K, value: V) {
+        if (!contains(table, copy key)) {
+            add(table, copy key, value)
         } else {
-            let ref = self.borrow_mut(key);
+            let ref = borrow_mut(table, key);
             *ref = value;
         };
     }
 
-    /// Remove from `self` and return the value which `key` maps to.
+    /// Remove from `table` and return the value which `key` maps to.
     /// Aborts if there is no entry for `key`.
-    public fun remove<K: copy + drop, V>(self: &mut Table<K, V>, key: K): V {
-        let Box { val } = remove_box<K, V, Box<V>>(self, key);
+    public fun remove<K: copy + drop, V>(table: &mut Table<K, V>, key: K): V {
+        let Box { val } = remove_box<K, V, Box<V>>(table, key);
         val
     }
 
-    /// Returns true iff `self` contains an entry for `key`.
-    public fun contains<K: copy + drop, V>(self: &Table<K, V>, key: K): bool {
-        contains_box<K, V, Box<V>>(self, key)
+    /// Returns true iff `table` contains an entry for `key`.
+    public fun contains<K: copy + drop, V>(table: &Table<K, V>, key: K): bool {
+        contains_box<K, V, Box<V>>(table, key)
     }
 
     #[test_only]
     /// Testing only: allows to drop a table even if it is not empty.
-    public fun drop_unchecked<K: copy + drop, V>(self: Table<K, V>) {
-        drop_unchecked_box<K, V, Box<V>>(self)
+    public fun drop_unchecked<K: copy + drop, V>(table: Table<K, V>) {
+        drop_unchecked_box<K, V, Box<V>>(table)
     }
 
-    /// Table cannot know if it is empty or not, so this method is not public,
-    /// and can be used only in modules that know by themselves that table is empty.
-    friend fun destroy_known_empty_unsafe<K: copy + drop, V>(self: Table<K, V>) {
-        destroy_empty_box<K, V, Box<V>>(&self);
-        drop_unchecked_box<K, V, Box<V>>(self)
+    public(friend) fun destroy<K: copy + drop, V>(table: Table<K, V>) {
+        destroy_empty_box<K, V, Box<V>>(&table);
+        drop_unchecked_box<K, V, Box<V>>(table)
     }
 
     #[test_only]
@@ -105,11 +102,11 @@ module aptos_std::table {
         let t = new<u64, u8>();
         let key: u64 = 111;
         let error_code: u64 = 1;
-        assert!(!t.contains(key), error_code);
-        t.upsert(key, 12);
-        assert!(*t.borrow(key) == 12, error_code);
-        t.upsert(key, 23);
-        assert!(*t.borrow(key) == 23, error_code);
+        assert!(!contains(&t, key), error_code);
+        upsert(&mut t, key, 12);
+        assert!(*borrow(&t, key) == 12, error_code);
+        upsert(&mut t, key, 23);
+        assert!(*borrow(&t, key) == 23, error_code);
 
         move_to(&account, TableHolder { t });
     }
@@ -119,10 +116,10 @@ module aptos_std::table {
         let t = new<u64, u8>();
         let key: u64 = 100;
         let error_code: u64 = 1;
-        assert!(!t.contains(key), error_code);
-        assert!(*t.borrow_with_default(key, &12) == 12, error_code);
-        t.add(key, 1);
-        assert!(*t.borrow_with_default(key, &12) == 1, error_code);
+        assert!(!contains(&t, key), error_code);
+        assert!(*borrow_with_default(&t, key, &12) == 12, error_code);
+        add(&mut t, key, 1);
+        assert!(*borrow_with_default(&t, key, &12) == 1, error_code);
 
         move_to(&account, TableHolder{ t });
     }

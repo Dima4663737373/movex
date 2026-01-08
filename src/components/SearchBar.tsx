@@ -44,6 +44,9 @@ export function SearchBar({ posts, profiles, onSearch }: SearchBarProps) {
     useEffect(() => {
         if (!query.trim()) {
             setResults({ users: [], posts: [] });
+            if (onSearch && query === '') {
+                onSearch('');
+            }
             return;
         }
 

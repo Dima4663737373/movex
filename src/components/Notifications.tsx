@@ -262,7 +262,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         }));
 
         try {
-            await fetch('/api/notifications', {
+            const res = await fetch('/api/notifications', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -271,8 +271,31 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
                     action: 'mark_read'
                 })
             });
+            
+            if (res.ok) {
+                const data = await res.json();
+                // Update state with server response to ensure consistency
+                if (data.notifications) {
+                    setNotifications(data.notifications);
+                }
+            } else {
+                // Revert optimistic update on error
+                setNotifications(prev => prev.map(n => {
+                    if (notificationId && n.id === notificationId) {
+                        return { ...n, read: false };
+                    }
+                    return n;
+                }));
+            }
         } catch (e) {
             console.error("Failed to mark notifications as read", e);
+            // Revert optimistic update on error
+            setNotifications(prev => prev.map(n => {
+                if (notificationId && n.id === notificationId) {
+                    return { ...n, read: false };
+                }
+                return n;
+            }));
         }
     }, [account]);
 

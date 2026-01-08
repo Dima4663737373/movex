@@ -7,7 +7,6 @@ module aptos_framework::function_info {
 
     friend aptos_framework::fungible_asset;
     friend aptos_framework::dispatchable_fungible_asset;
-    friend aptos_framework::account_abstraction;
 
     /// String is not a valid Move identifier
     const EINVALID_IDENTIFIER: u64 = 1;
@@ -36,7 +35,7 @@ module aptos_framework::function_info {
         )
     }
 
-    public fun new_function_info_from_address(
+    public(friend) fun new_function_info_from_address(
         module_address: address,
         module_name: String,
         function_name: String,

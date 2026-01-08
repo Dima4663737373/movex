@@ -63,13 +63,19 @@ import TipStatsModal from './TipStatsModal';
 
 export default function PostCard({ post, isOwner, showTipButton = true, initialIsBookmarked = false, hideComments = false, compact = false, previewCount = 3, highlight }: PostCardProps) {
     const router = useRouter();
+    
+    // Normalize post data - support both 'creator' and 'creatorAddress' fields
+    const normalizedPost = {
+        ...post,
+        creatorAddress: post.creatorAddress || (post as any).creator || '',
+    };
     const { account, signAndSubmitTransaction, signMessage, network } = useWallet();
     const { sendTip } = useMovementTransaction();
     const { t } = useLanguage();
     const { currentNetwork } = useNetwork();
     const { addNotification } = useNotifications();
-    const [displayName, setDisplayName] = useState<string>(post.creatorHandle || '');
-    const [avatarUrl, setAvatarUrl] = useState<string>(post.creatorAvatar || '');
+    const [displayName, setDisplayName] = useState<string>(normalizedPost.creatorHandle || '');
+    const [avatarUrl, setAvatarUrl] = useState<string>(normalizedPost.creatorAvatar || '');
     const [tipping, setTipping] = useState(false);
     const [tipAmount, setTipAmount] = useState('1');
     const [showTipInput, setShowTipInput] = useState(false);
@@ -151,7 +157,8 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                 `[ref:${postRef}]`, 
                 '', 
                 0, 
-                signAndSubmitTransaction
+                signAndSubmitTransaction,
+                account?.address?.toString() // Pass user address for account check
             );
             
             if (newPostId !== null) {
@@ -165,8 +172,8 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                 addNotification(t.postCreatedSuccess, "success", { persist: false });
 
                 // Notify original author
-                if (post.creatorAddress !== account.address.toString()) {
-                    sendSocialNotification(post.creatorAddress, {
+                if (normalizedPost.creatorAddress !== account.address.toString()) {
+                    sendSocialNotification(normalizedPost.creatorAddress, {
                         type: 'repost',
                         actorAddress: account.address.toString(),
                         targetPostId: post.id,
@@ -447,18 +454,18 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
         const fetchProfile = async () => {
             try {
                 // Sync from props if available
-                if (post.creatorHandle) {
-                    setDisplayName(post.creatorHandle);
+                if (normalizedPost.creatorHandle) {
+                    setDisplayName(normalizedPost.creatorHandle);
                 } else {
                     // Fetch if not provided
-                    const name = await getDisplayName(post.creatorAddress);
+                    const name = await getDisplayName(normalizedPost.creatorAddress);
                     if (name) setDisplayName(name);
                 }
 
-                if (post.creatorAvatar) {
-                    setAvatarUrl(post.creatorAvatar);
+                if (normalizedPost.creatorAvatar) {
+                    setAvatarUrl(normalizedPost.creatorAvatar);
                 } else {
-                    const avatar = await getAvatar(post.creatorAddress);
+                    const avatar = await getAvatar(normalizedPost.creatorAddress);
                     if (avatar) setAvatarUrl(avatar);
                 }
             } catch (e) {
@@ -468,12 +475,14 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
 
         const fetchVotes = async () => {
             // Strict check for valid post ID to prevent "phantom" votes on undefined/null IDs
+            // Also skip for pending/temp IDs (optimistic posts) as they won't exist on server yet
             if (!post.id || post.id === 'undefined' || post.id === 'null') return;
+            if (typeof post.id === 'string' && (post.id.startsWith('temp-') || post.id.startsWith('pending-'))) return;
 
             try {
                 const queryParams = new URLSearchParams({
                     postId: post.id,
-                    creatorAddress: post.creatorAddress
+                    creatorAddress: normalizedPost.creatorAddress
                 });
                 if (account?.address) {
                     queryParams.append('userAddress', account.address.toString());
@@ -494,7 +503,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
 
         fetchProfile();
         fetchVotes();
-    }, [post.id, post.creatorAddress, post.creatorHandle, post.creatorAvatar, account?.address]);
+    }, [post.id, normalizedPost.creatorAddress, normalizedPost.creatorHandle, normalizedPost.creatorAvatar, account?.address]);
 
     // Interaction state
     const [isHidden, setIsHidden] = useState(false);
@@ -525,7 +534,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         userAddress: account.address.toString(),
-                        targetAddress: post.creatorAddress
+                        targetAddress: normalizedPost.creatorAddress
                     })
                 });
                 
@@ -548,7 +557,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     userAddress: account.address.toString(),
-                    targetAddress: post.creatorAddress,
+                    targetAddress: normalizedPost.creatorAddress,
                     postId: post.id,
                     type: action
                 })
@@ -684,8 +693,8 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
             return;
         }
 
-        if (!post.creatorAddress) {
-            console.error("Missing creator address for post:", post);
+        if (!normalizedPost.creatorAddress) {
+            console.error("Missing creator address for post:", normalizedPost);
             addNotification("Unable to vote: Invalid post data", "error");
             return;
         }
@@ -716,8 +725,8 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
         setVotes({ up: newUp, down: newDown });
 
         // Notify if upvote
-        if (newUserVote === 'up' && post.creatorAddress !== account.address.toString()) {
-            sendSocialNotification(post.creatorAddress, {
+        if (newUserVote === 'up' && normalizedPost.creatorAddress !== account.address.toString()) {
+            sendSocialNotification(normalizedPost.creatorAddress, {
                 type: 'like',
                 actorAddress: account.address.toString(),
                 targetPostId: post.id,
@@ -733,7 +742,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     postId: post.id,
-                    creatorAddress: post.creatorAddress,
+                    creatorAddress: normalizedPost.creatorAddress,
                     userAddress: account.address.toString(),
                     type: type
                 })
@@ -764,8 +773,32 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
         e.stopPropagation();
         if (!account) return;
 
-        if (!post.creatorAddress) {
+        // Validate required fields
+        // Use global_id if available (even if 0), otherwise use id
+        let postId: number | string | null = null;
+        
+        if (normalizedPost.global_id !== undefined && normalizedPost.global_id !== null) {
+            postId = normalizedPost.global_id;
+        } else if (normalizedPost.id !== undefined && normalizedPost.id !== null) {
+            postId = normalizedPost.id;
+        }
+        
+        // Check if postId is valid (0 is a valid ID, but null/undefined/empty string are not)
+        if (postId === null || postId === undefined || (typeof postId === 'string' && postId.trim() === '')) {
+            console.error("Bookmark failed: Missing or invalid post ID", normalizedPost);
             addNotification("Unable to bookmark: Invalid post data", "error");
+            return;
+        }
+
+        if (!normalizedPost.creatorAddress || normalizedPost.creatorAddress.trim() === '') {
+            console.error("Bookmark failed: Missing creator address", post);
+            addNotification("Unable to bookmark: Invalid post data", "error");
+            return;
+        }
+
+        if (!account.address) {
+            console.error("Bookmark failed: Missing user address");
+            addNotification("Unable to bookmark: Wallet not connected", "error");
             return;
         }
 
@@ -787,8 +820,8 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    postId: (post.global_id !== undefined ? post.global_id : post.id).toString(),
-                    creatorAddress: post.creatorAddress,
+                    postId: postId.toString(),
+                    creatorAddress: normalizedPost.creatorAddress.trim(),
                     userAddress: account.address.toString()
                 })
             });
@@ -799,8 +832,17 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                 if (data.count !== undefined) setBookmarkCount(data.count);
                 window.dispatchEvent(new Event('bookmark_changed'));
             } else {
-                console.error("Bookmark failed", await res.text());
-                addNotification("Failed to bookmark", "error", { persist: true });
+                const errorText = await res.text();
+                let errorMessage = "Failed to bookmark";
+                try {
+                    const errorData = JSON.parse(errorText);
+                    errorMessage = errorData.error || errorMessage;
+                } catch {
+                    // If not JSON, use the text as is
+                    if (errorText) errorMessage = errorText;
+                }
+                console.error("Bookmark failed:", errorMessage, "Response:", res.status);
+                addNotification(errorMessage, "error", { persist: true });
                 // Revert
                 setIsBookmarked(wasBookmarked);
                 setBookmarkCount(previousCount);
@@ -837,8 +879,8 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
         console.log("Account connected:", account.address);
         console.log("SignAndSubmit defined:", !!signAndSubmitTransaction);
 
-        if (!post.creatorAddress) {
-            console.error("Missing creator address for post:", post);
+        if (!normalizedPost.creatorAddress) {
+            console.error("Missing creator address for post:", normalizedPost);
             addNotification("Unable to tip: Invalid post data", "error");
             return;
         }
@@ -867,7 +909,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
             console.log("Preparing to send tip...");
 
             const params = {
-                creatorAddress: post.creatorAddress,
+                creatorAddress: normalizedPost.creatorAddress,
                 postId: parseInt(post.id),
                 amount: amount
             };
@@ -887,7 +929,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                 if (account?.address) {
                     saveLocalTransaction({
                         sender: account.address.toString(),
-                        receiver: post.creatorAddress,
+                        receiver: normalizedPost.creatorAddress,
                         amount: parseFloat(tipAmount),
                         timestamp: Math.floor(Date.now() / 1000), // Store in seconds to match on-chain events
                         hash: txHash,
@@ -901,7 +943,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                     detail: { 
                         amount: amount,
                         sender: account?.address?.toString(),
-                        receiver: post.creatorAddress
+                        receiver: normalizedPost.creatorAddress
                     } 
                 });
                 window.dispatchEvent(tipEvent);
@@ -1045,7 +1087,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
         // Don't navigate if we're editing
         if (isEditing) return;
 
-        router.push(`/${post.creatorAddress}/status/${post.id}`);
+        router.push(`/${normalizedPost.creatorAddress}/status/${post.id}`);
     };
 
     if (isHidden) {
@@ -1086,9 +1128,9 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                         </svg>
                         <span className="hover:underline cursor-pointer" onClick={(e) => {
                             e.stopPropagation();
-                            router.push(`/${post.creatorAddress}`);
+                            router.push(`/${normalizedPost.creatorAddress}`);
                         }}>
-                            {displayName || formatMovementAddress(post.creatorAddress)}
+                            {displayName || formatMovementAddress(normalizedPost.creatorAddress)}
                         </span> 
                         <span>reposted</span>
                     </div>
@@ -1098,7 +1140,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                 <div className="flex gap-3">
                     {/* Avatar Column */}
                     <div className="flex-shrink-0">
-                        <Link href={`/${post.creatorAddress}`} onClick={(e) => e.stopPropagation()}>
+                        <Link href={`/${normalizedPost.creatorAddress}`} onClick={(e) => e.stopPropagation()}>
                             <div className="w-10 h-10 rounded-full bg-[var(--card-border)] overflow-hidden">
                                 {avatarUrl ? (
                                     <img src={avatarUrl} alt={displayName} className="w-full h-full object-cover" />
@@ -1116,11 +1158,11 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                         {/* Header Row */}
                         <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2 overflow-hidden">
-                                <Link href={`/${post.creatorAddress}`} className="font-bold text-[var(--text-primary)] hover:underline truncate" onClick={(e) => e.stopPropagation()}>
-                                    {displayName || formatMovementAddress(post.creatorAddress)}
+                                <Link href={`/${normalizedPost.creatorAddress}`} className="font-bold text-[var(--text-primary)] hover:underline truncate" onClick={(e) => e.stopPropagation()}>
+                                    {displayName || formatMovementAddress(normalizedPost.creatorAddress)}
                                 </Link>
                                 <span className="text-[var(--text-secondary)] text-sm truncate">
-                                    @{post.creatorAddress ? post.creatorAddress.slice(0, 6) : '...'}...
+                                    @{normalizedPost.creatorAddress ? normalizedPost.creatorAddress.slice(0, 6) : '...'}...
                                 </span>
                                 <span className="text-[var(--text-secondary)] text-sm">·</span>
                                 {!compact && (
@@ -1204,21 +1246,21 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                                                     className="w-full text-left px-4 py-3 text-sm text-[var(--text-primary)] hover:bg-[var(--hover-bg)] flex items-center gap-3"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6" /></svg>
-                                                    {t.unfollow} @{post.creatorHandle || post.creatorAddress?.slice(0, 4) || '...'}
+                                                    {t.unfollow} @{normalizedPost.creatorHandle || normalizedPost.creatorAddress?.slice(0, 4) || '...'}
                                                 </button>
                                                 <button
                                                     onClick={() => handleInteraction('mute')}
                                                     className="w-full text-left px-4 py-3 text-sm text-[var(--text-primary)] hover:bg-[var(--hover-bg)] flex items-center gap-3"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" /></svg>
-                                                    {t.mute} @{post.creatorHandle || post.creatorAddress?.slice(0, 4) || '...'}
+                                                    {t.mute} @{normalizedPost.creatorHandle || normalizedPost.creatorAddress?.slice(0, 4) || '...'}
                                                 </button>
                                                 <button
                                                     onClick={() => handleInteraction('block')}
                                                     className="w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-[var(--hover-bg)] flex items-center gap-3 border-t border-[var(--card-border)]"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                                    {t.block} @{post.creatorHandle || post.creatorAddress?.slice(0, 4) || '...'}
+                                                    {t.block} @{normalizedPost.creatorHandle || normalizedPost.creatorAddress?.slice(0, 4) || '...'}
                                                 </button>
                                             </>
                                         )}
@@ -1683,7 +1725,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                                         className="text-[13px] text-[var(--accent)] hover:underline w-full text-left mt-2"
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            router.push(`/${post.creatorAddress}/status/${post.id}`);
+                                            router.push(`/${normalizedPost.creatorAddress}/status/${post.id}`);
                                         }}
                                     >
                                         {t.viewAllComments} ({comments.length})
@@ -1697,7 +1739,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                             <div className="mt-4 border-t border-[var(--card-border)] pt-4" onClick={(e) => e.stopPropagation()}>
                                 <CreatePostForm 
                                     parentId={parseInt(post.id)}
-                                    parentAuthorAddress={post.creatorAddress} 
+                                    parentAuthorAddress={normalizedPost.creatorAddress} 
                                     onPostCreated={() => {
                                         setShowReplyForm(false);
                                         window.dispatchEvent(new Event('comment_added'));
@@ -1715,7 +1757,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                                     repostOf={{
                                         id: parseInt(post.id),
                                         global_id: post.global_id,
-                                        creator: post.creatorAddress,
+                                        creator: normalizedPost.creatorAddress,
                                         content: post.content,
                                         image_url: post.image_url || '',
                                         style: typeof post.style === 'string' ? parseInt(post.style) : post.style,
@@ -1742,8 +1784,8 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
             <TipStatsModal
                 isOpen={showTipStats}
                 onClose={() => setShowTipStats(false)}
-                userAddress={post.creatorAddress}
-                displayName={displayName || post.creatorHandle || formatMovementAddress(post.creatorAddress)}
+                userAddress={normalizedPost.creatorAddress}
+                displayName={displayName || normalizedPost.creatorHandle || formatMovementAddress(normalizedPost.creatorAddress)}
             />
 
             {/* Image Viewer Modal */}

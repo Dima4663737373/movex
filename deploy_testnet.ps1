@@ -3,9 +3,11 @@
 
 Write-Output "=== Movement Testnet Deployment Helper ==="
 
-# Check CLI
+# Check CLI - Use version 3.5.0 for Movement Network compatibility
 $AptosPath = "aptos"
-if (Test-Path ".\aptos-cli\aptos.exe") {
+if (Test-Path ".\aptos-cli-3.5.0\aptos.exe") {
+    $AptosPath = Resolve-Path ".\aptos-cli-3.5.0\aptos.exe"
+} elseif (Test-Path ".\aptos-cli\aptos.exe") {
     $AptosPath = Resolve-Path ".\aptos-cli\aptos.exe"
 } elseif (Test-Path "..\aptos-cli\aptos.exe") {
     $AptosPath = Resolve-Path "..\aptos-cli\aptos.exe"
@@ -88,7 +90,7 @@ try {
     Copy-Item -Path "$($tempDir.FullName)\.aptos" -Destination "." -Recurse -Force
 
     # Deploy to Movement
-    & $AptosPath move publish --named-addresses mines=$address --url $RPC_URL --assume-yes
+    & $AptosPath move publish --named-addresses mines=$address --url $RPC_URL --assume-yes --skip-fetch-latest-git-deps
 
     # Initialize the contract
     Write-Output "Initializing contract..."

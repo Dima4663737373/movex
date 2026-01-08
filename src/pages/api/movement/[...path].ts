@@ -63,10 +63,12 @@ export default async function handler(
     }
 
     // Get the path from the query parameter
+    // Next.js catch-all routes put path segments in req.query.path as an array
     const { path } = req.query;
 
     if (!path) {
-      return res.status(400).json({ error: 'Invalid path' });
+      console.error('[RPC Proxy] No path provided. Query:', req.query);
+      return res.status(400).json({ error: 'Invalid path', query: req.query });
     }
 
     // Handle both array and string paths
@@ -76,7 +78,8 @@ export default async function handler(
     } else if (typeof path === 'string') {
       pathArray = [path];
     } else {
-      return res.status(400).json({ error: 'Invalid path format' });
+      console.error('[RPC Proxy] Invalid path format:', path);
+      return res.status(400).json({ error: 'Invalid path format', path });
     }
 
     // Build the target URL
@@ -124,6 +127,7 @@ export default async function handler(
     }
 
     console.log(`[RPC Proxy] ${req.method} ${targetUrl}`);
+    console.log(`[RPC Proxy] Path segments:`, pathArray);
 
     // Forward the request to Movement Network RPC
     const controller = new AbortController();
@@ -159,6 +163,14 @@ export default async function handler(
       response = await fetch(targetUrl, fetchOptions);
     } catch (fetchError: any) {
       console.error('[RPC Proxy] Fetch error:', fetchError);
+      clearTimeout(timeoutId);
+      if (!res.headersSent) {
+        return res.status(502).json({
+          error: 'Failed to connect to Movement Network',
+          message: fetchError instanceof Error ? fetchError.message : 'Unknown error',
+          targetUrl
+        });
+      }
       throw fetchError;
     }
 
@@ -166,6 +178,20 @@ export default async function handler(
 
     // Forward status
     res.status(response.status);
+    
+    // Don't log 404s for resources that may not be initialized yet - this is normal
+    // Only log 404s for unexpected resources
+    if (response.status === 404) {
+      const isExpected404 = 
+        targetUrl.includes('::Profile') || 
+        targetUrl.includes('::CheckInState') ||
+        targetUrl.includes('::Registry') ||
+        targetUrl.includes('::TopTipperStats');
+      
+      if (!isExpected404) {
+        console.warn(`[RPC Proxy] 404 from upstream: ${targetUrl}`);
+      }
+    }
 
     // Forward headers
     response.headers.forEach((value, key) => {

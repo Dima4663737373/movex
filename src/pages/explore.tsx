@@ -32,7 +32,7 @@ export default function ExplorePage() {
     const handleSearch = (query: string) => {
         setSearchQuery(query);
         if (!query.trim()) {
-            setFilteredPosts(posts);
+            setFilteredPosts([]);
             return;
         }
         const lowerQuery = query.toLowerCase();
@@ -62,7 +62,7 @@ export default function ExplorePage() {
             // Sort by total tips (trending)
             const sortedPosts = [...allPosts].sort((a, b) => b.total_tips - a.total_tips);
             setPosts(sortedPosts);
-            setFilteredPosts(sortedPosts);
+            setFilteredPosts([]);
             setStats(statsData);
 
             // Load profiles
@@ -125,7 +125,7 @@ export default function ExplorePage() {
 
                             {loading ? (
                                 <div className="space-y-4">
-                                    {[1, 2, 3, 4, 5].map(i => (
+                                    {[1, 2, 3].map(i => (
                                         <div key={i} className="bg-[var(--card-bg)] border-b border-[var(--card-border)] p-4 animate-pulse">
                                             <div className="flex gap-3">
                                                 <div className="w-10 h-10 bg-neutral-800 rounded-full"></div>
@@ -133,10 +133,6 @@ export default function ExplorePage() {
                                                     <div className="h-4 bg-neutral-800 rounded w-1/3"></div>
                                                     <div className="h-3 bg-neutral-800 rounded w-1/4"></div>
                                                 </div>
-                                            </div>
-                                            <div className="mt-4 space-y-2">
-                                                <div className="h-4 bg-neutral-800 rounded w-full"></div>
-                                                <div className="h-4 bg-neutral-800 rounded w-5/6"></div>
                                             </div>
                                         </div>
                                     ))}
@@ -166,11 +162,18 @@ export default function ExplorePage() {
                                 <div className="p-12 text-center border-t border-[var(--card-border)]">
                                     <div className="w-16 h-16 bg-[var(--card-border)] rounded-full flex items-center justify-center mx-auto mb-4">
                                         <svg className="w-8 h-8 text-[var(--text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                         </svg>
                                     </div>
-                                    <h3 className="text-xl font-bold text-[var(--text-primary)] mb-2">No Trending Posts</h3>
-                                    <p className="text-[var(--text-secondary)]">Check back later for trending content!</p>
+                                    <h3 className="text-xl font-bold text-[var(--text-primary)] mb-2">
+                                        {searchQuery ? "No Results Found" : "Explore Content"}
+                                    </h3>
+                                    <p className="text-[var(--text-secondary)]">
+                                        {searchQuery 
+                                            ? `We couldn't find any matches for "${searchQuery}"` 
+                                            : "Search for tags, words, or $cashtags to find posts"
+                                        }
+                                    </p>
                                 </div>
                             )}
                         </div>

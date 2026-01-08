@@ -21,6 +21,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 const creator = (creatorAddress as string).toLowerCase();
                 const pid = postId as string;
 
+                // Return neutral state for pending/temp posts
+                if (pid.startsWith('temp-') || pid.startsWith('pending-')) {
+                    return res.status(200).json({ up: 0, down: 0, userVote: null });
+                }
+
                 // Fetch votes for this post
                 const { data: votes, error } = await supabaseAdmin
                     .from('votes')

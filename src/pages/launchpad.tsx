@@ -55,7 +55,7 @@ export default function LaunchpadPage() {
 
             await signAndSubmitTransaction({
                 data: {
-                    function: `${minesAddress}::launchpad_v12::create_token`,
+                    function: `${minesAddress}::launchpad_v10::create_token`,
                     functionArguments: [
                         tokenName,
                         tokenSymbol,

@@ -91,7 +91,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             const unreadCount = messages.filter((m: Message) => 
                 m.sender.toLowerCase() === contact && 
                 m.receiver.toLowerCase() === userAddress && 
-                !m.read
+                !m.read &&
+                m.sender.toLowerCase() !== userAddress // Don't count self-messages as unread
             ).length;
             
             return {

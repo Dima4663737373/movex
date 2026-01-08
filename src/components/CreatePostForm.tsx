@@ -193,8 +193,9 @@ export function CreatePostForm({ onPostCreated, parentId, repostOf, parentAuthor
         setError(null);
         setSuccess(false);
 
-        if (!connected) {
-            setError(t.pleaseConnectWallet);
+        if (!connected || !account || !signAndSubmitTransaction) {
+            setError(t.pleaseConnectWallet || "Please connect your wallet first");
+            addNotification("Please connect your wallet to create a post", "error", { persist: false });
             return;
         }
 
@@ -348,6 +349,11 @@ export function CreatePostForm({ onPostCreated, parentId, repostOf, parentAuthor
 
                 // Chain Transaction
                 if (parentId) {
+                    // Double-check wallet connection before creating comment
+                    if (!connected || !account || !signAndSubmitTransaction) {
+                        throw new Error("Wallet disconnected. Please reconnect your wallet.");
+                    }
+                    
                     await createCommentOnChain(
                         parentId,
                         finalContent,
@@ -381,11 +387,17 @@ export function CreatePostForm({ onPostCreated, parentId, repostOf, parentAuthor
                         }
                     });
                 } else {
+                    // Double-check wallet connection before creating post
+                    if (!connected || !account || !signAndSubmitTransaction) {
+                        throw new Error("Wallet disconnected. Please reconnect your wallet.");
+                    }
+                    
                     const newPostId = await createPostOnChain(
                         finalContent,
-                        legacyImage, 
-                        0, 
-                        signAndSubmitTransaction
+                        legacyImage,
+                        0,
+                        signAndSubmitTransaction,
+                        account?.address?.toString() // Pass user address for account check
                     );
 
                     // Notify original author about quote/repost
@@ -434,15 +446,26 @@ export function CreatePostForm({ onPostCreated, parentId, repostOf, parentAuthor
                 
             } catch (error: any) {
                 console.error('Failed to create post:', error);
-                const msg = error?.message || t.postCreationError;
+                let msg = error?.message || t.postCreationError;
+                
+                // Handle specific wallet errors
+                if (error?.name === 'WalletNotConnectedError' || error?.message?.includes('WalletNotConnected') || error?.message?.includes('not connected')) {
+                    msg = "Wallet is not connected. Please connect your wallet and try again.";
+                    addNotification(msg, "error", { persist: true });
+                } else if (error?.message?.includes('disconnected')) {
+                    msg = "Wallet disconnected. Please reconnect your wallet.";
+                    addNotification(msg, "error", { persist: true });
+                } else if (error?.error_code === 'account_not_found' || error?.message?.includes('Account not found')) {
+                    msg = "Account not found on blockchain. Your account needs to be initialized. Please try receiving a small amount of MOVE tokens first.";
+                    addNotification(msg, "error", { persist: true });
+                } else {
+                    addNotification("Post failed: " + msg, "error", { persist: true });
+                }
                 
                 // Dispatch fail event
                 window.dispatchEvent(new CustomEvent('post_fail', { 
                     detail: { tempId, error: msg } 
                 }));
-                
-                // We should also probably show a notification so the user knows WHY it failed
-                addNotification("Post failed: " + msg, "error", { persist: true });
                 
                 // Optional: Restore draft? 
                 // Since form is cleared, maybe we can save it to localStorage drafts?
@@ -637,7 +660,7 @@ export function CreatePostForm({ onPostCreated, parentId, repostOf, parentAuthor
 
             {/* Submit Button */}
             <div className="flex justify-end">
-                {!repostOf && (
+                {!repostOf && !parentId && (
                     <button
                         type="button"
                         onClick={() => setShowScheduleModal(true)}

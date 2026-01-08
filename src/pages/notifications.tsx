@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useWallet } from '@aptos-labs/wallet-adapter-react';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -9,15 +9,22 @@ import { getDisplayName, getAvatar } from '@/lib/microThreadsClient';
 import Link from 'next/link';
 
 // Component to render individual activity item
-function ActivityItem({ activity }: { activity: any }) {
+function ActivityItem({ activity, onMarkAsRead }: { activity: any; onMarkAsRead: (id: string) => void }) {
     const { t } = useLanguage();
     const [actorName, setActorName] = useState(activity.actorAddress.slice(0, 6));
     const [actorAvatar, setActorAvatar] = useState('');
 
-    useState(() => {
+    useEffect(() => {
         getDisplayName(activity.actorAddress).then(setActorName);
         getAvatar(activity.actorAddress).then(setActorAvatar);
-    });
+    }, [activity.actorAddress]);
+
+    const handleClick = () => {
+        // Mark as read when clicked
+        if (!activity.read) {
+            onMarkAsRead(activity.id);
+        }
+    };
 
     let icon, content;
     
@@ -87,7 +94,11 @@ function ActivityItem({ activity }: { activity: any }) {
     }
 
     return (
-        <Link href={`/${activity.actorAddress}`} className={`block p-4 border-b border-[var(--card-border)] hover:bg-[var(--card-bg-hover)] transition-colors ${!activity.read ? 'bg-[var(--accent)]/5' : ''}`}>
+        <Link 
+            href={`/${activity.actorAddress}`} 
+            onClick={handleClick}
+            className={`block p-4 border-b border-[var(--card-border)] hover:bg-[var(--card-bg-hover)] transition-colors ${!activity.read ? 'bg-[var(--accent)]/5' : ''}`}
+        >
             <div className="flex gap-4">
                 <div className="mt-1 flex-shrink-0">
                     {icon}
@@ -210,7 +221,11 @@ export default function NotificationsPage() {
                                         </div>
                                     ) : (
                                         filteredActivities.map(activity => (
-                                            <ActivityItem key={activity.id} activity={activity} />
+                                            <ActivityItem 
+                                                key={activity.id} 
+                                                activity={activity} 
+                                                onMarkAsRead={markAsRead}
+                                            />
                                         ))
                                     )}
                                 </div>

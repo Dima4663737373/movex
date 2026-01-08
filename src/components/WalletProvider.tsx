@@ -48,7 +48,18 @@ export function WalletProvider({ children }: WalletProviderProps) {
         <AptosWalletAdapterProvider
             autoConnect={true}
             onError={(error) => {
-                console.error('Wallet adapter error:', error);
+                // Only log non-user-initiated errors (don't spam console with user rejections)
+                if (error.name !== 'UserRejectedRequestError' && !error.message?.includes('User has rejected')) {
+                    // Suppress account_not_found errors - these are handled gracefully
+                    if (error.error_code === 'account_not_found' || error.message?.includes('Account not found')) {
+                        // Silently handle account_not_found - it's expected for new accounts
+                        return;
+                    }
+                    console.error('Wallet adapter error:', error);
+                } else {
+                    // Silently handle user rejections
+                    console.log('User rejected wallet request');
+                }
             }}
         >
             <AutoReconnect>

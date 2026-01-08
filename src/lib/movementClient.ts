@@ -14,13 +14,52 @@ import { MOVEMENT_TESTNET_RPC, MOVEMENT_TESTNET_INDEXER, convertToMovementAddres
  */
 export function getAptosClient(configOverride?: NetworkConfig): Aptos {
   const currentConfig = configOverride || getCurrentNetworkConfig();
+  
+  // Temporarily suppress console.log to hide SDK warnings
+  const originalLog = console.log;
+  const originalWarn = console.warn;
+  const originalInfo = console.info;
+  
+  const suppressSDKWarnings = (...args: any[]) => {
+    const message = args[0]?.toString?.() || '';
+    if (message.includes('CUSTOM network') || message.includes('lookup ChainId')) {
+      return false; // Suppress this message
+    }
+    return true; // Allow this message
+  };
+  
+  console.log = (...args: any[]) => {
+    if (suppressSDKWarnings(...args)) {
+      originalLog.apply(console, args);
+    }
+  };
+  console.warn = (...args: any[]) => {
+    if (suppressSDKWarnings(...args)) {
+      originalWarn.apply(console, args);
+    }
+  };
+  console.info = (...args: any[]) => {
+    if (suppressSDKWarnings(...args)) {
+      originalInfo.apply(console, args);
+    }
+  };
+  
   const config = new AptosConfig({
     network: Network.CUSTOM,
     fullnode: currentConfig.rpcUrl,
     indexer: currentConfig.indexerUrl,
   });
 
-  return new Aptos(config);
+  const client = new Aptos(config);
+  
+  // Restore console functions after a short delay
+  setTimeout(() => {
+    console.log = originalLog;
+    console.warn = originalWarn;
+    console.info = originalInfo;
+  }, 100);
+  
+  return client;
 }
 
 /**
@@ -84,7 +123,7 @@ export async function getAuthorTips(authorAddress: string): Promise<number> {
         // Fetch Registry to get table handle
         const registry = await client.getAccountResource({
             accountAddress: minesAddress,
-            resourceType: `${minesAddress}::donations_v12::Registry`
+            resourceType: `${minesAddress}::donations_v10::Registry`
         }) as any;
 
         if (!registry || !registry.total_tips || !registry.total_tips.handle) {
@@ -137,7 +176,7 @@ export async function getAllAuthors(): Promise<string[]> {
     try {
         const registry = await client.getAccountResource({
             accountAddress: minesAddress,
-            resourceType: `${minesAddress}::donations_v12::Registry`
+            resourceType: `${minesAddress}::donations_v10::Registry`
         }) as any;
 
         return (registry.authors as string[]) || [];
@@ -170,7 +209,7 @@ export async function getChallenges(): Promise<any[]> {
     try {
       const resource = await client.getAccountResource({
         accountAddress: minesAddress,
-        resourceType: `${minesAddress}::challenges_v12::ChallengeRegistry`
+        resourceType: `${minesAddress}::challenges_v10::ChallengeRegistry`
       });
 
       const data = resource as any;
@@ -207,7 +246,7 @@ export async function getUserCompletedChallenges(userAddress: string): Promise<s
     try {
       const resource = await client.getAccountResource({
         accountAddress: normalizedAddress,
-        resourceType: `${minesAddress}::challenges_v12::UserProgress`
+        resourceType: `${minesAddress}::challenges_v10::UserProgress`
       });
 
       const data = resource as any;
@@ -272,7 +311,7 @@ export async function getUserBadges(userAddress: string): Promise<any[]> {
     try {
         const userBadgesRes = await client.getAccountResource({
             accountAddress: normalizedAddress,
-            resourceType: `${minesAddress}::badges_v12::UserBadges`
+            resourceType: `${minesAddress}::badges_v10::UserBadges`
         }) as any;
         userBadgeIds = userBadgesRes.badges || [];
     } catch (e) {
@@ -285,7 +324,7 @@ export async function getUserBadges(userAddress: string): Promise<any[]> {
     try {
         const registryRes = await client.getAccountResource({
             accountAddress: minesAddress,
-            resourceType: `${minesAddress}::badges_v12::BadgeRegistry`
+            resourceType: `${minesAddress}::badges_v10::BadgeRegistry`
         }) as any;
         allBadges = registryRes.badges || [];
     } catch (e) {
@@ -589,8 +628,7 @@ export async function getGasEstimation(): Promise<GasEstimation> {
     // Get gas price estimation from the network
     const gasEstimation = await client.getGasPriceEstimation();
 
-    console.log("📊 Gas estimation from network:", gasEstimation);
-
+    // Removed console.log for production - gas estimation is handled automatically
     // gas_estimate is the gas unit price (in octas per gas unit)
     const gasUnitPrice = gasEstimation.gas_estimate || DEFAULT_GAS_CONFIG.gasUnitPrice;
 
@@ -648,7 +686,7 @@ export async function getStats() {
         try {
             const registry = await client.getAccountResource({
                 accountAddress: moduleAddress,
-                resourceType: `${moduleAddress}::donations_v12::Registry`
+                resourceType: `${moduleAddress}::donations_v10::Registry`
             }) as any;
             totalVolume = parseInt(registry.global_total || "0");
         } catch (e) {
@@ -659,7 +697,7 @@ export async function getStats() {
         try {
             const stats = await client.getAccountResource({
                 accountAddress: moduleAddress,
-                resourceType: `${moduleAddress}::donations_v12::TopTipperStats`
+                resourceType: `${moduleAddress}::donations_v10::TopTipperStats`
             }) as any;
             
             if (stats.top_tipper && stats.top_tipper !== "0x0" && stats.top_tipper !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
@@ -726,13 +764,15 @@ export async function getUserTipStats(userAddress: string): Promise<{
         let totalSent = 0;
         // TopTipperStats is not available in v10 contract. 
         // We would need to query events to get this data.
+        // Note: TopTipperStats was added in v12, but we're using v10
+        // TODO: Implement event-based tracking for sent tips
         
         /* 
         const client = getAptosClient();
         try {
             const stats = await client.getAccountResource({
                 accountAddress: minesAddress,
-                resourceType: `${minesAddress}::donations_v12::TopTipperStats`
+                resourceType: `${minesAddress}::donations_v10::TopTipperStats`
             }) as any;
 
             if (stats && stats.sent_counts && stats.sent_counts.handle) {

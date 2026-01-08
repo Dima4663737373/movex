@@ -246,11 +246,11 @@ export default function LeftSidebar({ activePage, currentUserAddress, displayNam
                         
                         <Link 
                             href={item.href}
-                            className={`flex items-center gap-2 px-4 py-3 rounded-full text-xl transition-all duration-300 relative ${
+                            className={`flex items-center rounded-full text-xl transition-all duration-300 relative ${
                                 isActive 
                                     ? 'font-bold text-[var(--text-primary)] bg-[var(--card-border)]' 
                                     : 'font-medium text-[var(--text-primary)] hover:bg-[var(--hover-bg)]'
-                            } ${isCollapsed ? 'justify-center w-fit px-3' : ''}`}
+                            } ${isCollapsed ? 'justify-center w-12 h-12 p-0' : 'gap-2 px-4 py-3'}`}
                         >
                             <div className={`${isActive ? 'text-[var(--accent)]' : 'text-[var(--text-primary)]'} transition-colors relative shrink-0`}>
                                 {item.icon}
@@ -282,7 +282,7 @@ export default function LeftSidebar({ activePage, currentUserAddress, displayNam
             {/* Post Button */}
             <button
                 onClick={() => setIsComposeOpen(true)}
-                className={`mt-4 bg-yellow-400 text-black font-bold text-lg rounded-full py-3 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 hover:bg-yellow-500 transition-all duration-300 flex items-center justify-center gap-2 ${isCollapsed ? 'w-12 h-12 p-0' : 'w-full'}`}
+                className={`mt-4 bg-yellow-400 text-black font-bold text-lg rounded-full py-3 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 hover:bg-yellow-500 transition-all duration-300 flex items-center justify-center ${isCollapsed ? 'w-12 h-12 p-0' : 'w-full gap-2'}`}
             >
                 <span className={`transition-all duration-300 ease-in-out overflow-hidden whitespace-nowrap ${
                     isCollapsed 
@@ -333,7 +333,7 @@ export default function LeftSidebar({ activePage, currentUserAddress, displayNam
                 <button 
                     ref={buttonRef}
                     onClick={() => setIsAccountMenuOpen(!isAccountMenuOpen)}
-                    className={`flex items-center gap-3 w-full p-2 rounded-full hover:bg-[var(--hover-bg)] transition-all duration-300 ${isCollapsed ? 'justify-center' : ''}`}
+                    className={`flex items-center rounded-full hover:bg-[var(--hover-bg)] transition-all duration-300 ${isCollapsed ? 'justify-center w-12 h-12 p-0' : 'w-full gap-3 p-2'}`}
                 >
                     <div className="w-10 h-10 rounded-full bg-[var(--card-border)] flex items-center justify-center text-sm font-bold text-[var(--text-primary)] overflow-hidden shrink-0 border border-[var(--card-border)]">
                         {avatar ? (
@@ -352,10 +352,10 @@ export default function LeftSidebar({ activePage, currentUserAddress, displayNam
                     </div>
                     
                     {/* Ellipsis icon for menu indication */}
-                    <div className={`ml-auto text-[var(--text-secondary)] transition-all duration-300 ease-in-out overflow-hidden ${
+                    <div className={`text-[var(--text-secondary)] transition-all duration-300 ease-in-out overflow-hidden ${
                         isCollapsed 
                             ? 'max-w-0 opacity-0' 
-                            : 'max-w-0 xl:max-w-[24px] opacity-0 xl:opacity-100'
+                            : 'ml-auto max-w-0 xl:max-w-[24px] opacity-0 xl:opacity-100'
                     }`}>
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
