@@ -603,7 +603,7 @@ export default function CreatorPage() {
                     <title>Loading... - MoveFeed</title>
                 </Head>
 
-                <div className="lg:px-6">
+                <div className="pt-6 lg:px-6">
                     <div className="space-y-8 min-w-0">
                         {/* Profile Header Card Skeleton */}
                         <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl overflow-hidden relative h-[450px] animate-pulse">
@@ -645,7 +645,7 @@ export default function CreatorPage() {
                 <title>{displayName || formatMovementAddress(address)} - MoveFeed</title>
             </Head>
 
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-6 pt-6">
                 {/* CENTER: Profile Info & Posts */}
                 <div className="space-y-8 min-w-0 lg:px-6">
                     {/* Profile Header Card */}

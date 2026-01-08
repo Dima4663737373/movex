@@ -16,6 +16,7 @@ import CalendarModal from "@/components/CalendarModal";
 import { useNotifications } from "@/components/Notifications";
 import { useChat } from "@/contexts/ChatContext";
 import ConversationList from "@/components/chat/ConversationList";
+import SavedMessagesView from "@/components/chat/SavedMessagesView";
 import { Message, Conversation, Profile } from "@/types/chat";
 
 export default function ChatPage() {
@@ -548,7 +549,7 @@ export default function ChatPage() {
             {/* MainLayout is applied in _app.tsx, so we just provide content */}
             <div className="grid grid-cols-1 md:grid-cols-[350px_1fr] h-full md:gap-x-0 md:divide-x md:divide-[var(--card-border)]">
                 {/* MIDDLE: Conversations List */}
-                <div className={`flex flex-col h-full bg-[var(--bg-primary)] md:px-6 ${activeContact ? 'hidden md:flex' : 'flex'}`}>
+                <div className={`flex flex-col h-full bg-[var(--bg-primary)] pt-6 md:px-6 ${activeContact ? 'hidden md:flex' : 'flex'}`}>
                     <ConversationList
                         conversations={conversations}
                         activeContact={activeContact}
@@ -560,7 +561,7 @@ export default function ChatPage() {
                 </div>
 
                 {/* RIGHT: Chat Window */}
-                <div className={`flex flex-col h-full md:px-6 ${!activeContact ? 'hidden md:flex' : 'flex'}`}>
+                <div className={`flex flex-col h-full pt-6 md:px-6 ${!activeContact ? 'hidden md:flex' : 'flex'}`}>
                     {!activeContact ? (
                         <div className="flex-1 flex flex-col items-center justify-center text-center text-[var(--text-secondary)]">
                             <div className="w-20 h-20 bg-[var(--card-border)] rounded-full flex items-center justify-center mx-auto mb-4">
