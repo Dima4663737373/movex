@@ -193,9 +193,9 @@ export default function SavedMessagesView() {
     };
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full md:px-6">
             {/* Header */}
-            <div className="flex items-center gap-3 mb-4 px-4 border-b border-[var(--card-border)] pb-4 flex-shrink-0">
+            <div className="flex items-center gap-3 mb-4 px-4 md:px-0 border-b border-[var(--card-border)] pb-4 flex-shrink-0">
                 <div className="w-10 h-10 bg-[var(--accent)]/20 rounded-full flex items-center justify-center">
                     <svg className="w-6 h-6 text-[var(--accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
@@ -208,7 +208,7 @@ export default function SavedMessagesView() {
             </div>
 
             {/* Messages List */}
-            <div className="flex-1 overflow-y-auto space-y-4 px-4 custom-scrollbar pb-4 min-h-0">
+            <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar pb-4 min-h-0">
                 {loading ? (
                     <div className="flex justify-center p-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent)]"></div>
@@ -321,7 +321,7 @@ export default function SavedMessagesView() {
             </div>
 
             {/* Input Area */}
-            <div className="mx-4 mb-4 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-2 relative">
+            <div className="mt-4 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-2 relative">
                 {showEmojiPicker && (
                     <div className="absolute bottom-full right-0 mb-2 z-50">
                         <EmojiPicker 

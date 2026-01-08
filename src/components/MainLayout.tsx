@@ -41,12 +41,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     const [rsStats, setRsStats] = useState({ totalTips: 0, totalVolume: 0, topTipper: "" });
     const [rsProfiles, setRsProfiles] = useState<Record<string, any>>({});
 
-    const isChatPage = router.pathname.startsWith('/chat');
+    const isChatPage = router.pathname === '/chat';
     const isSavedPage = router.pathname.includes('/saved');
     const isFullHeightPage = isChatPage || isSavedPage;
 
     const isLaunchpadPage = router.pathname.includes('/launchpad');
-    const hideRightSidebar = isChatPage || isSavedPage || isLaunchpadPage;
+    const hideRightSidebar = isChatPage || isLaunchpadPage;
 
     // Use a slightly wider collapsed state if needed, or 80px. 
     // Standard sidebar is ~240px.
