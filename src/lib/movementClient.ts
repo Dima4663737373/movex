@@ -14,52 +14,14 @@ import { MOVEMENT_TESTNET_RPC, MOVEMENT_TESTNET_INDEXER, convertToMovementAddres
  */
 export function getAptosClient(configOverride?: NetworkConfig): Aptos {
   const currentConfig = configOverride || getCurrentNetworkConfig();
-  
-  // Temporarily suppress console.log to hide SDK warnings
-  const originalLog = console.log;
-  const originalWarn = console.warn;
-  const originalInfo = console.info;
-  
-  const suppressSDKWarnings = (...args: any[]) => {
-    const message = args[0]?.toString?.() || '';
-    if (message.includes('CUSTOM network') || message.includes('lookup ChainId')) {
-      return false; // Suppress this message
-    }
-    return true; // Allow this message
-  };
-  
-  console.log = (...args: any[]) => {
-    if (suppressSDKWarnings(...args)) {
-      originalLog.apply(console, args);
-    }
-  };
-  console.warn = (...args: any[]) => {
-    if (suppressSDKWarnings(...args)) {
-      originalWarn.apply(console, args);
-    }
-  };
-  console.info = (...args: any[]) => {
-    if (suppressSDKWarnings(...args)) {
-      originalInfo.apply(console, args);
-    }
-  };
-  
+
   const config = new AptosConfig({
     network: Network.CUSTOM,
     fullnode: currentConfig.rpcUrl,
     indexer: currentConfig.indexerUrl,
   });
 
-  const client = new Aptos(config);
-  
-  // Restore console functions after a short delay
-  setTimeout(() => {
-    console.log = originalLog;
-    console.warn = originalWarn;
-    console.info = originalInfo;
-  }, 100);
-  
-  return client;
+  return new Aptos(config);
 }
 
 /**
@@ -121,10 +83,7 @@ export async function getAuthorTips(authorAddress: string): Promise<number> {
 
     try {
         // Fetch Registry to get table handle
-        const registry = await client.getAccountResource({
-            accountAddress: minesAddress,
-            resourceType: `${minesAddress}::donations_v10::Registry`
-        }) as any;
+        const registry = await safeGetAccountResource(client, minesAddress, `${minesAddress}::donations_v10::Registry`);
 
         if (!registry || !registry.total_tips || !registry.total_tips.handle) {
             return 0;
@@ -174,10 +133,9 @@ export async function getAllAuthors(): Promise<string[]> {
     const client = getAptosClient();
 
     try {
-        const registry = await client.getAccountResource({
-            accountAddress: minesAddress,
-            resourceType: `${minesAddress}::donations_v10::Registry`
-        }) as any;
+        const registry = await safeGetAccountResource(client, minesAddress, `${minesAddress}::donations_v10::Registry`);
+
+        if (!registry) return [];
 
         return (registry.authors as string[]) || [];
 
@@ -207,12 +165,8 @@ export async function getChallenges(): Promise<any[]> {
     const client = getAptosClient();
 
     try {
-      const resource = await client.getAccountResource({
-        accountAddress: minesAddress,
-        resourceType: `${minesAddress}::challenges_v10::ChallengeRegistry`
-      });
-
-      const data = resource as any;
+      const data = await safeGetAccountResource(client, minesAddress, `${minesAddress}::challenges_v10::ChallengeRegistry`);
+      
       if (data && data.challenges) {
           return data.challenges;
       }
@@ -244,12 +198,8 @@ export async function getUserCompletedChallenges(userAddress: string): Promise<s
     const normalizedAddress = convertToMovementAddress(userAddress);
 
     try {
-      const resource = await client.getAccountResource({
-        accountAddress: normalizedAddress,
-        resourceType: `${minesAddress}::challenges_v10::UserProgress`
-      });
+      const data = await safeGetAccountResource(client, normalizedAddress, `${minesAddress}::challenges_v10::UserProgress`);
 
-      const data = resource as any;
       if (data && data.completed_challenges) {
           return data.completed_challenges; // Array of challenge IDs (strings or numbers)
       }
@@ -309,11 +259,10 @@ export async function getUserBadges(userAddress: string): Promise<any[]> {
     // 1. Get user badge IDs
     let userBadgeIds: string[] = [];
     try {
-        const userBadgesRes = await client.getAccountResource({
-            accountAddress: normalizedAddress,
-            resourceType: `${minesAddress}::badges_v10::UserBadges`
-        }) as any;
-        userBadgeIds = userBadgesRes.badges || [];
+        const userBadgesRes = await safeGetAccountResource(client, normalizedAddress, `${minesAddress}::badges_v10::UserBadges`);
+        if (userBadgesRes) {
+            userBadgeIds = userBadgesRes.badges || [];
+        }
     } catch (e) {
         // User has no badges
         return [];
@@ -322,11 +271,10 @@ export async function getUserBadges(userAddress: string): Promise<any[]> {
     // 2. Get registry badges to map IDs to details
     let allBadges: any[] = [];
     try {
-        const registryRes = await client.getAccountResource({
-            accountAddress: minesAddress,
-            resourceType: `${minesAddress}::badges_v10::BadgeRegistry`
-        }) as any;
-        allBadges = registryRes.badges || [];
+        const registryRes = await safeGetAccountResource(client, minesAddress, `${minesAddress}::badges_v10::BadgeRegistry`);
+        if (registryRes) {
+            allBadges = registryRes.badges || [];
+        }
     } catch (e) {
         // Registry not found?
         console.warn("BadgeRegistry not found");
@@ -684,23 +632,19 @@ export async function getStats() {
     try {
         // Fetch Registry for total volume
         try {
-            const registry = await client.getAccountResource({
-                accountAddress: moduleAddress,
-                resourceType: `${moduleAddress}::donations_v10::Registry`
-            }) as any;
-            totalVolume = parseInt(registry.global_total || "0");
+            const registry = await safeGetAccountResource(client, moduleAddress, `${moduleAddress}::donations_v10::Registry`);
+            if (registry) {
+                totalVolume = parseInt(registry.global_total || "0");
+            }
         } catch (e) {
             // Resource might not exist yet
         }
 
         // Fetch TopTipperStats for top tipper
         try {
-            const stats = await client.getAccountResource({
-                accountAddress: moduleAddress,
-                resourceType: `${moduleAddress}::donations_v10::TopTipperStats`
-            }) as any;
+            const stats = await safeGetAccountResource(client, moduleAddress, `${moduleAddress}::donations_v10::TopTipperStats`);
             
-            if (stats.top_tipper && stats.top_tipper !== "0x0" && stats.top_tipper !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
+            if (stats && stats.top_tipper && stats.top_tipper !== "0x0" && stats.top_tipper !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
                 topTipper = stats.top_tipper;
             }
         } catch (e) {
@@ -803,5 +747,21 @@ export async function getUserTipStats(userAddress: string): Promise<{
     } catch (error: any) {
         console.error("Error fetching user tip stats:", error);
         return { totalSent: 0, totalReceived: 0, tipsSentCount: 0 };
+    }
+}
+
+/**
+ * Safely get an account resource without triggering 404 console errors
+ * Uses getAccountResources (plural) to fetch all resources and filter locally
+ */
+export async function safeGetAccountResource(client: Aptos, accountAddress: string, resourceType: string): Promise<any> {
+    try {
+        const resources = await client.getAccountResources({ accountAddress });
+        const resource = resources.find((r: any) => r.type === resourceType);
+        return resource ? resource.data : null;
+    } catch (error: any) {
+        // If account doesn't exist (404), return null silently
+        if (error?.status === 404 || error?.message?.includes("not found")) return null;
+        throw error;
     }
 }

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { getCurrentNetworkConfig } from "@/lib/movement";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { getAptosClient } from "@/lib/movementClient";
+import { getAptosClient, safeGetAccountResource } from "@/lib/movementClient";
 
 export function DailyCheckIn() {
     const { account, signAndSubmitTransaction } = useWallet();
@@ -52,13 +52,17 @@ export function DailyCheckIn() {
         
         try {
             const client = getAptosClient();
-            const resource = await client.getAccountResource({
-                accountAddress: account.address,
-                resourceType: `${minesAddress}::${moduleName}::CheckInState`
-            });
+            const data = await safeGetAccountResource(client, account.address, `${minesAddress}::${moduleName}::CheckInState`);
             
-            // @ts-ignore
-            const data = resource;
+            if (!data) {
+                 // User hasn't checked in yet, this is normal
+                 // No red log needed, safeGetAccountResource handled it
+                 console.log("No check-in history found (first time user).");
+                 setStreak(0);
+                 setCanCheckIn(true);
+                 return;
+            }
+            
             const now = Math.floor(Date.now() / 1000);
             const dayNow = Math.floor(now / 86400);
             const dayLast = Math.floor(Number(data.last_check_in_time) / 86400);
@@ -74,10 +78,8 @@ export function DailyCheckIn() {
             setCanCheckIn(dayNow > dayLast);
             
         } catch (e: any) {
-             if (e.message?.includes("Resource not found") || e.message?.includes("resource_not_found") || e.errorCode === "resource_not_found") {
-                 // User hasn't checked in yet, this is normal
-                 console.log("No check-in history found (first time user).");
-             } else if (e?.error_code === 'module_not_found' || e?.message?.includes('Module not found')) {
+            // safeGetAccountResource returns null on 404, so we mostly catch other errors here
+            if (e?.error_code === 'module_not_found' || e?.message?.includes('Module not found')) {
                  // Module doesn't exist - feature not deployed
                  console.warn(`Module ${moduleName} not found. Daily check-in feature may not be available.`);
                  setStreak(0);

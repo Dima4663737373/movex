@@ -3,10 +3,6 @@
 @tailwind utilities;
 
 @layer base {
-    html {
-        overflow-y: scroll;
-    }
-
     :root {
         /* Default (Dark) - Pure Black/Zinc */
         --bg-primary: #000000;

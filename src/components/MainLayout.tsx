@@ -50,7 +50,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
     // Use a slightly wider collapsed state if needed, or 80px. 
     // Standard sidebar is ~240px.
-    const sidebarWidthClass = 'lg:w-[240px]';
+    const sidebarWidthClass = isChatPage ? 'lg:w-[80px]' : 'lg:w-[240px]';
 
     useEffect(() => {
         const fetchProfile = async () => {
@@ -133,7 +133,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                             currentUserAddress={currentUserAddress} 
                             displayName={displayName} 
                             avatar={avatar}
-                            isCollapsed={false}
+                            isCollapsed={isChatPage}
                         />
                     </div>
 

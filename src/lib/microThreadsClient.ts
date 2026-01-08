@@ -7,7 +7,7 @@
 import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk";
 import { InputTransactionData } from "@aptos-labs/wallet-adapter-react";
 import { getCurrentNetworkConfig, getModuleAddress, convertToMovementAddress, isValidMovementAddress } from "./movement";
-import { getGasEstimation } from "./movementClient"; // Keep for future use or remove if strict
+import { getGasEstimation, safeGetAccountResource } from "./movementClient"; // Keep for future use or remove if strict
 
 export interface OnChainPost {
     id: number;
@@ -344,10 +344,8 @@ export async function getGlobalPostsCount(): Promise<number> {
 
     try {
         const client = getClient();
-        const feed = await client.getAccountResource({
-            accountAddress: MODULE_ADDRESS,
-            resourceType: `${MODULE_ADDRESS}::move_feed_v13::GlobalFeed`
-        }) as any;
+        const feed = await safeGetAccountResource(client, MODULE_ADDRESS, `${MODULE_ADDRESS}::move_feed_v13::GlobalFeed`);
+        if (!feed) return 0;
         return Number(feed.post_counter);
     } catch (error: any) {
         if (isNotFound(error)) {
@@ -469,10 +467,8 @@ export async function getGlobalPosts(page: number = 0, limit: number = 10): Prom
 
     try {
         const client = getClient();
-        const feed = await client.getAccountResource({
-            accountAddress: MODULE_ADDRESS,
-            resourceType: `${MODULE_ADDRESS}::move_feed_v13::GlobalFeed`
-        }) as any;
+        const feed = await safeGetAccountResource(client, MODULE_ADDRESS, `${MODULE_ADDRESS}::move_feed_v13::GlobalFeed`);
+        if (!feed) return 0;
 
         const allPosts = feed.posts as any[];
         
@@ -704,10 +700,15 @@ export async function getDisplayName(userAddress: string): Promise<string> {
 
     try {
         const client = getClient();
-        const profile = await client.getAccountResource({
-            accountAddress: normalizedAddress,
-            resourceType: `${MODULE_ADDRESS}::move_feed_v13::Profile`
-        }) as any;
+        const profile = await safeGetAccountResource(client, normalizedAddress, `${MODULE_ADDRESS}::move_feed_v13::Profile`);
+
+        if (!profile) {
+            // Profile not found - cache it
+            const existing = profileCache.get(cacheKey) || { timestamp: Date.now() };
+            existing.name = "";
+            profileCache.set(cacheKey, existing);
+            return "";
+        }
 
         const name = getString(profile.name);
         
@@ -718,15 +719,9 @@ export async function getDisplayName(userAddress: string): Promise<string> {
         
         return name;
     } catch (error: any) {
-        // Silence 404s (Profile not initialized) - this is normal for new users
-        if (isNotFound(error)) {
-            // Cache the "not found" result to avoid repeated requests
-            const existing = profileCache.get(cacheKey) || { timestamp: Date.now() };
-            existing.name = "";
-            profileCache.set(cacheKey, existing);
-            return "";
-        }
-        // Only log non-404 errors
+        // Only log errors that are not 404s (safeGetAccountResource already handles 404 by returning null, but if account missing it might still throw?)
+        // safeGetAccountResource catches account missing 404 and returns null too.
+        // So we might not hit this catch block for 404s anymore.
         console.error("Error fetching display name:", error);
         return "";
     }
@@ -759,10 +754,7 @@ export async function getUserTipStats(userAddress: string): Promise<{
 
         // 1. Get Total Received (from Registry)
         try {
-            const registry = await client.getAccountResource({
-                accountAddress: MODULE_ADDRESS,
-                resourceType: `${MODULE_ADDRESS}::donations_v10::Registry`
-            }) as any;
+            const registry = await safeGetAccountResource(client, MODULE_ADDRESS, `${MODULE_ADDRESS}::donations_v10::Registry`);
 
             if (registry && registry.total_tips && registry.total_tips.handle) {
                 const item = await client.getTableItem({
@@ -781,10 +773,7 @@ export async function getUserTipStats(userAddress: string): Promise<{
 
         // 2. Get Total Sent (from TopTipperStats)
         try {
-            const stats = await client.getAccountResource({
-                accountAddress: MODULE_ADDRESS,
-                resourceType: `${MODULE_ADDRESS}::donations_v10::TopTipperStats`
-            }) as any;
+            const stats = await safeGetAccountResource(client, MODULE_ADDRESS, `${MODULE_ADDRESS}::donations_v10::TopTipperStats`);
 
             if (stats && stats.sent_counts && stats.sent_counts.handle) {
                 const item = await client.getTableItem({
