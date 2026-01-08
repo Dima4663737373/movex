@@ -603,44 +603,38 @@ export default function CreatorPage() {
                     <title>Loading... - MoveFeed</title>
                 </Head>
 
-                <main className="container-custom py-6 md:py-10">
-                    <div className="max-w-[1280px] mx-auto">
-                        <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-6 xl:divide-x xl:divide-[var(--card-border)]">
-
-                            {/* CENTER: Profile Info & Posts SKELETON */}
-                            <div className="space-y-8 min-w-0 lg:px-6">
-                                {/* Profile Header Card Skeleton */}
-                                <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl overflow-hidden relative h-[450px] animate-pulse">
-                                    <div className="h-48 bg-[var(--card-border)] w-full"></div>
-                                    <div className="absolute top-36 left-6 w-32 h-32 rounded-full bg-[var(--card-border)] border-4 border-[var(--card-bg)]"></div>
-                                    <div className="mt-16 px-6 space-y-4">
-                                        <div className="h-8 w-48 bg-[var(--card-border)] rounded"></div>
-                                        <div className="h-4 w-32 bg-[var(--card-border)] rounded"></div>
-                                        <div className="flex gap-4 pt-2">
-                                            <div className="h-10 w-24 bg-[var(--card-border)] rounded-lg"></div>
-                                            <div className="h-10 w-24 bg-[var(--card-border)] rounded-lg"></div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Posts Skeleton */}
-                                <div className="space-y-4">
-                                    {[1, 2, 3].map(i => (
-                                        <div key={i} className="bg-[var(--card-bg)] border border-[var(--card-border)] p-4 rounded-xl animate-pulse h-48">
-                                            <div className="flex gap-4">
-                                                <div className="w-12 h-12 rounded-full bg-[var(--card-border)]"></div>
-                                                <div className="flex-1 space-y-3">
-                                                    <div className="h-4 w-1/3 bg-[var(--card-border)] rounded"></div>
-                                                    <div className="h-16 w-full bg-[var(--card-border)] rounded"></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
+                <div className="lg:px-6">
+                    <div className="space-y-8 min-w-0">
+                        {/* Profile Header Card Skeleton */}
+                        <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl overflow-hidden relative h-[450px] animate-pulse">
+                            <div className="h-48 bg-[var(--card-border)] w-full"></div>
+                            <div className="absolute top-36 left-6 w-32 h-32 rounded-full bg-[var(--card-border)] border-4 border-[var(--card-bg)]"></div>
+                            <div className="mt-16 px-6 space-y-4">
+                                <div className="h-8 w-48 bg-[var(--card-border)] rounded"></div>
+                                <div className="h-4 w-32 bg-[var(--card-border)] rounded"></div>
+                                <div className="flex gap-4 pt-2">
+                                    <div className="h-10 w-24 bg-[var(--card-border)] rounded-lg"></div>
+                                    <div className="h-10 w-24 bg-[var(--card-border)] rounded-lg"></div>
                                 </div>
                             </div>
                         </div>
+
+                        {/* Posts Skeleton */}
+                        <div className="space-y-4">
+                            {[1, 2, 3].map(i => (
+                                <div key={i} className="bg-[var(--card-bg)] border border-[var(--card-border)] p-4 rounded-xl animate-pulse h-48">
+                                    <div className="flex gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-[var(--card-border)]"></div>
+                                        <div className="flex-1 space-y-3">
+                                            <div className="h-4 w-1/3 bg-[var(--card-border)] rounded"></div>
+                                            <div className="h-16 w-full bg-[var(--card-border)] rounded"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
-                </main>
+                </div>
             </>
         );
     }
