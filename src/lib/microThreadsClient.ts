@@ -77,7 +77,6 @@ function getClient() {
 }
 
 const MODULE_NAME = "move_feed_v13";
-
 // Profile cache to avoid repeated 404 requests
 const profileCache = new Map<string, { name?: string; avatar?: string; profile?: any; timestamp: number }>();
 const PROFILE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
