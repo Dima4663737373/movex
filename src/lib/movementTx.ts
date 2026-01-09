@@ -51,7 +51,7 @@ export async function buildTipPostPayload(
 
     const payload: any = {
         data: {
-            function: `${TIPJAR_MODULE_ADDRESS}::move_feed_v12::tip_post`,
+            function: `${TIPJAR_MODULE_ADDRESS}::move_feed_v13::tip_post`,
             typeArguments: [],
             functionArguments: [
                 formattedCreatorAddress,
