@@ -263,5 +263,5 @@ export interface GasEstimation {
 
 export const DEFAULT_GAS_CONFIG: GasEstimation = {
     gasUnitPrice: 100,
-    maxGasAmount: 2000,
+    maxGasAmount: 10000, // Increased to ensure sufficient gas, but this is just a limit, not a transfer
 };

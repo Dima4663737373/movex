@@ -487,7 +487,7 @@ export default function ComposeModal({ isOpen, onClose, onPostCreated }: Compose
                     ? uploadedMediaUrls[0] 
                     : (mediaItems.length > 0 && mediaItems[0].type === 'image' ? mediaItems[0].url : '');
 
-                const postId = await createPostOnChain(finalContent, legacyImage, 0, signAndSubmitTransaction);
+                const postId = await createPostOnChain(finalContent, legacyImage, 0, signAndSubmitTransaction, account?.address?.toString());
 
                 if (postId !== null) {
                     // Success

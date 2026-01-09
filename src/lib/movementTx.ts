@@ -155,19 +155,18 @@ export async function buildCreatePostPayload(
         };
     }
 
+    // Return transaction WITHOUT gas options to prevent wallet misinterpretation
+    // The wallet will handle gas estimation automatically
     return {
         data: {
-            function: `${TIPJAR_MODULE_ADDRESS}::move_feed_v12::create_post`,
+            function: `${TIPJAR_MODULE_ADDRESS}::move_feed_v13::create_post`,
             typeArguments: [],
             functionArguments: [
                 content, // Pass string directly, SDK handles it
                 style,   // Pass style as image_url
             ],
         },
-        options: {
-            maxGasAmount: gasConfig.maxGasAmount,
-            gasUnitPrice: gasConfig.gasUnitPrice,
-        },
+        // Removed options to prevent wallet from misinterpreting as coin transfer
     };
 }
 

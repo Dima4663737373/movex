@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useWallet } from '@aptos-labs/wallet-adapter-react';
-import { getTipHistory } from '@/lib/movementClient';
+import { getTipHistory } from '@/lib/microThreadsClient';
 import { useNotifications } from '@/components/Notifications';
 
 export function useTipMonitor() {

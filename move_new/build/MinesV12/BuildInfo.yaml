@@ -12,7 +12,7 @@ compiled_package_info:
     std: "0000000000000000000000000000000000000000000000000000000000000001"
     vm: "0000000000000000000000000000000000000000000000000000000000000000"
     vm_reserved: "0000000000000000000000000000000000000000000000000000000000000000"
-  source_digest: 7A8FC9DFED379F53D7AB59FD7577E456C65559782A0422CE2C2787F80AC56AC2
+  source_digest: AB028DB713413DEDAF2377043C22BEF013B241BFFE90F8FA7620618CC5C74DBB
   build_flags:
     dev_mode: false
     test_mode: false
@@ -20,14 +20,15 @@ compiled_package_info:
     generate_docs: false
     generate_abis: false
     generate_move_model: true
-    full_model_generation: true
+    full_model_generation: false
     install_dir: ~
     force_recompilation: false
     additional_named_addresses: {}
+    architecture: ~
     fetch_deps_only: false
     skip_fetch_latest_git_deps: false
     compiler_config:
-      bytecode_version: 8
+      bytecode_version: ~
       known_attributes:
         - bytecode_instruction
         - deprecated
@@ -36,11 +37,7 @@ compiled_package_info:
         - "fmt::skip"
         - legacy_entry_fun
         - "lint::allow_unsafe_randomness"
-        - "lint::skip"
-        - module_lock
-        - "mutation::skip"
         - native_interface
-        - persistent
         - randomness
         - resource_group
         - resource_group_member
@@ -49,13 +46,9 @@ compiled_package_info:
         - verify_only
         - view
       skip_attribute_checks: false
-      compiler_version: V2_0
-      language_version: "2.2"
-      experiments:
-        - optimize=on
-      print_errors: true
+      compiler_version: ~
+      language_version: ~
 dependencies:
   - AptosFramework
   - AptosStdlib
   - MoveStdlib
-bytecode_deps: []

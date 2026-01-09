@@ -33,7 +33,7 @@ export default function CreateProfileForm({ onSuccess, onCancel }: CreateProfile
         setIsSaving(true);
         try {
             // 1. On-chain update
-            await setProfile(displayName, bio, avatarUrl, signAndSubmitTransaction);
+            await setProfile(displayName, bio, avatarUrl, signAndSubmitTransaction, account.address.toString());
 
             // 2. Off-chain (Supabase) update
             const timestamp = Date.now();

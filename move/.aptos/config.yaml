@@ -1,9 +1,8 @@
 ---
 profiles:
-  default:
+  mines_deploy:
     network: Custom
-    private_key: "0x78618406d49a1334e94a39394d0d5c11db6c6a29da55be54478b1b74bffc430b"
-    public_key: "0xe7ae463d291a245c6186ad13d38cdf42e0b207d69968cbfed7c00afeebe5181e"
-    account: 0xed56c3467b6bed0432a489e6f5adf9e9580b1bf3e3509694053149c42dc23020
+    private_key: "0xf17a351a44abc767e81908339b89bdaef46f21e8cfa91cb70963d73c7156e841"
+    public_key: "0xb59750d4ce30d76bc52dadd5577dbb1667c3be83b6c797be2a447325acca6782"
+    account: 9cef2fdeac69283a0419d51fdf7ffd4430347c6aef63674282c8a3c97dbef204
     rest_url: "https://testnet.movementnetwork.xyz/v1"
-    faucet_url: "https://faucet.testnet.movementnetwork.xyz/"

@@ -188,13 +188,80 @@ export function CreatePostForm({ onPostCreated, parentId, repostOf, parentAuthor
         setMediaItems(prev => prev.filter((_, i) => i !== index));
     };
 
+    const handleSaveDraft = () => {
+        if (!content.trim() && mediaItems.length === 0) return;
+        
+        if (!account?.address) {
+             addNotification(t.pleaseConnectWallet, "error", { persist: false });
+             return;
+        }
+
+        const userAddress = account.address.toString();
+        const localKey = `saved_messages_${userAddress}`;
+        
+        try {
+            const existingData = localStorage.getItem(localKey);
+            const messages = existingData ? JSON.parse(existingData) : [];
+            
+            // Construct message object compatible with SavedMessagesView
+            const newMessage = {
+                id: uuidv4(),
+                type: mediaItems.length > 0 ? mediaItems[0].type : 'text',
+                content: mediaItems.length > 0 ? mediaItems[0].url : content, // Simplified for now, complex media draft might need more work but this fits current schema
+                // Actually, if it's text + media, SavedMessagesView splits them. 
+                // Let's just save the text for now if there is text, or media if media.
+                // Better: if text exists, save text. If media exists, save media as separate items?
+                // For simplicity and user expectation: Save text as one draft.
+                timestamp: Date.now()
+            };
+
+            // If we have both, we might want to save the text. 
+            // The user asked for "text... annulled", implying text is the main concern.
+            // Let's save text first.
+            if (content.trim()) {
+                messages.push({
+                    id: uuidv4(),
+                    type: 'text',
+                    content: content,
+                    timestamp: Date.now()
+                });
+            }
+            
+            // Then save media if any
+            mediaItems.forEach(item => {
+                messages.push({
+                    id: uuidv4(),
+                    type: item.type,
+                    content: item.url,
+                    timestamp: Date.now()
+                });
+            });
+
+            localStorage.setItem(localKey, JSON.stringify(messages));
+            
+            // Notify other components
+            window.dispatchEvent(new CustomEvent('draft_saved'));
+            
+            addNotification("Draft saved to Saved Messages!", "success", { persist: false });
+            // Don't clear form so user can continue editing if they want
+            // setContent('');
+            // setMediaItems([]);
+            // if (fileInputRef.current) fileInputRef.current.value = '';
+            
+        } catch (e) {
+            console.error("Failed to save draft", e);
+            addNotification("Failed to save draft", "error");
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
         setSuccess(false);
 
-        if (!connected) {
-            setError(t.pleaseConnectWallet);
+        if (!connected || !account || !signAndSubmitTransaction) {
+            setError(t.pleaseConnectWallet || "Please connect your wallet first");
+            addNotification("Please connect your wallet to create a post", "error", { persist: false });
             return;
         }
 
@@ -348,6 +415,11 @@ export function CreatePostForm({ onPostCreated, parentId, repostOf, parentAuthor
 
                 // Chain Transaction
                 if (parentId) {
+                    // Double-check wallet connection before creating comment
+                    if (!connected || !account || !signAndSubmitTransaction) {
+                        throw new Error("Wallet disconnected. Please reconnect your wallet.");
+                    }
+                    
                     await createCommentOnChain(
                         parentId,
                         finalContent,
@@ -381,11 +453,17 @@ export function CreatePostForm({ onPostCreated, parentId, repostOf, parentAuthor
                         }
                     });
                 } else {
+                    // Double-check wallet connection before creating post
+                    if (!connected || !account || !signAndSubmitTransaction) {
+                        throw new Error("Wallet disconnected. Please reconnect your wallet.");
+                    }
+                    
                     const newPostId = await createPostOnChain(
                         finalContent,
-                        legacyImage, 
-                        0, 
-                        signAndSubmitTransaction
+                        legacyImage,
+                        0,
+                        signAndSubmitTransaction,
+                        account?.address?.toString() // Pass user address for account check
                     );
 
                     // Notify original author about quote/repost
@@ -434,15 +512,26 @@ export function CreatePostForm({ onPostCreated, parentId, repostOf, parentAuthor
                 
             } catch (error: any) {
                 console.error('Failed to create post:', error);
-                const msg = error?.message || t.postCreationError;
+                let msg = error?.message || t.postCreationError;
+                
+                // Handle specific wallet errors
+                if (error?.name === 'WalletNotConnectedError' || error?.message?.includes('WalletNotConnected') || error?.message?.includes('not connected')) {
+                    msg = "Wallet is not connected. Please connect your wallet and try again.";
+                    addNotification(msg, "error", { persist: true });
+                } else if (error?.message?.includes('disconnected')) {
+                    msg = "Wallet disconnected. Please reconnect your wallet.";
+                    addNotification(msg, "error", { persist: true });
+                } else if (error?.error_code === 'account_not_found' || error?.message?.includes('Account not found')) {
+                    msg = "Account not found on blockchain. Your account needs to be initialized. Please try receiving a small amount of MOVE tokens first.";
+                    addNotification(msg, "error", { persist: true });
+                } else {
+                    addNotification("Post failed: " + msg, "error", { persist: true });
+                }
                 
                 // Dispatch fail event
                 window.dispatchEvent(new CustomEvent('post_fail', { 
                     detail: { tempId, error: msg } 
                 }));
-                
-                // We should also probably show a notification so the user knows WHY it failed
-                addNotification("Post failed: " + msg, "error", { persist: true });
                 
                 // Optional: Restore draft? 
                 // Since form is cleared, maybe we can save it to localStorage drafts?
@@ -452,6 +541,18 @@ export function CreatePostForm({ onPostCreated, parentId, repostOf, parentAuthor
             }
         })();
     };
+
+    // Calculate progress circle props
+    const maxLength = 1000;
+    const progress = Math.min(content.length / maxLength, 1);
+    const radius = 10;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference - progress * circumference;
+    
+    // Color logic
+    let strokeColor = 'text-[var(--accent)]';
+    if (content.length > maxLength) strokeColor = 'text-red-500';
+    else if (content.length > maxLength * 0.9) strokeColor = 'text-yellow-500';
 
     return (
         <form onSubmit={handleSubmit} className="relative bg-[var(--card-bg)] border-b border-[var(--card-border)] p-4">
@@ -578,7 +679,11 @@ export function CreatePostForm({ onPostCreated, parentId, repostOf, parentAuthor
                                 fileInputRef.current.click();
                             }
                         }}
-                        className="text-neutral-400 hover:text-[var(--accent)] transition-colors flex items-center gap-2 text-sm font-medium"
+                        className={`flex items-center gap-2 text-sm font-medium transition-colors ${
+                            creating || mediaItems.length >= 4
+                                ? 'text-neutral-600 cursor-not-allowed opacity-50'
+                                : 'text-neutral-400 hover:text-[var(--accent)]'
+                        }`}
                         disabled={creating || mediaItems.length >= 4}
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -594,7 +699,11 @@ export function CreatePostForm({ onPostCreated, parentId, repostOf, parentAuthor
                                 fileInputRef.current.click();
                             }
                         }}
-                        className="text-neutral-400 hover:text-[var(--accent)] transition-colors flex items-center gap-2 text-sm font-medium"
+                        className={`flex items-center gap-2 text-sm font-medium transition-colors ${
+                            creating || mediaItems.length >= 4
+                                ? 'text-neutral-600 cursor-not-allowed opacity-50'
+                                : 'text-neutral-400 hover:text-[var(--accent)]'
+                        }`}
                         disabled={creating || mediaItems.length >= 4}
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -610,7 +719,11 @@ export function CreatePostForm({ onPostCreated, parentId, repostOf, parentAuthor
                                 fileInputRef.current.click();
                             }
                         }}
-                        className="text-neutral-400 hover:text-[var(--accent)] transition-colors flex items-center gap-2 text-sm font-medium"
+                        className={`flex items-center gap-2 text-sm font-medium transition-colors ${
+                            creating || mediaItems.length >= 4
+                                ? 'text-neutral-600 cursor-not-allowed opacity-50'
+                                : 'text-neutral-400 hover:text-[var(--accent)]'
+                        }`}
                         disabled={creating || mediaItems.length >= 4}
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
@@ -619,7 +732,11 @@ export function CreatePostForm({ onPostCreated, parentId, repostOf, parentAuthor
                     <button
                         type="button"
                         onClick={() => setShowGifPicker(!showGifPicker)}
-                        className="text-neutral-400 hover:text-[var(--accent)] transition-colors flex items-center gap-2 text-sm font-medium"
+                        className={`flex items-center gap-2 text-sm font-medium transition-colors ${
+                            creating || mediaItems.length >= 4
+                                ? 'text-neutral-600 cursor-not-allowed opacity-50'
+                                : 'text-neutral-400 hover:text-[var(--accent)]'
+                        }`}
                         disabled={creating || mediaItems.length >= 4}
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
@@ -629,29 +746,85 @@ export function CreatePostForm({ onPostCreated, parentId, repostOf, parentAuthor
                         {mediaItems.length}/4
                     </span>
                 </div>
-                    <div className="text-xs text-neutral-500">
-                        {content.length}/1000
+                
+                {/* Character Limit Circle */}
+                <div className="flex items-center gap-2">
+                    <div className="relative w-6 h-6 flex items-center justify-center">
+                         <svg className="w-full h-full transform -rotate-90">
+                            <circle
+                                cx="12"
+                                cy="12"
+                                r={radius}
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                fill="none"
+                                className="text-[var(--card-border)]"
+                            />
+                            <circle
+                                cx="12"
+                                cy="12"
+                                r={radius}
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                fill="none"
+                                strokeDasharray={circumference}
+                                strokeDashoffset={strokeDashoffset}
+                                strokeLinecap="round"
+                                className={`${strokeColor} transition-all duration-300`}
+                            />
+                        </svg>
+                        {content.length > maxLength && (
+                            <span className="absolute text-[10px] font-bold text-red-500">
+                                !
+                            </span>
+                        )}
                     </div>
                 </div>
             </div>
+            </div>
 
             {/* Submit Button */}
-            <div className="flex justify-end">
-                {!repostOf && (
-                    <button
-                        type="button"
-                        onClick={() => setShowScheduleModal(true)}
-                        disabled={creating}
-                        className={`mr-2 p-2 rounded-full hover:bg-[var(--bg-secondary)] transition-colors ${scheduledDate ? 'text-blue-500 bg-blue-500/10' : 'text-neutral-400'}`}
-                        title="Schedule"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    </button>
+            <div className="flex justify-end items-center gap-2">
+                {!repostOf && !parentId && (
+                    <>
+                        <button
+                            type="button"
+                            onClick={handleSaveDraft}
+                            disabled={creating || (!content.trim() && mediaItems.length === 0)}
+                            className={`p-2 rounded-full transition-colors ${
+                                creating || (!content.trim() && mediaItems.length === 0)
+                                    ? 'text-neutral-600 cursor-not-allowed opacity-50'
+                                    : 'hover:bg-[var(--bg-secondary)] text-neutral-400 hover:text-[var(--accent)]'
+                            }`}
+                            title={(!content.trim() && mediaItems.length === 0) ? "Write something to save draft" : (t.drafts || "Save Draft")}
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                            </svg>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setShowScheduleModal(true)}
+                            disabled={creating}
+                            className={`p-2 rounded-full transition-colors ${
+                                creating
+                                    ? 'text-neutral-600 cursor-not-allowed opacity-50'
+                                    : `hover:bg-[var(--bg-secondary)] ${scheduledDate ? 'text-blue-500 bg-blue-500/10' : 'text-neutral-400'}`
+                            }`}
+                            title="Schedule"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        </button>
+                    </>
                 )}
                 <button
                     type="submit"
                     disabled={!connected || creating || (!content.trim() && mediaItems.length === 0 && !repostOf)}
-                    className="px-6 py-2 bg-[var(--accent)] hover:brightness-110 text-[var(--btn-text-primary)] font-bold rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
+                    className={`px-6 py-2 font-bold rounded-full transition-all text-sm shadow-md 
+                        ${(!connected || creating || (!content.trim() && mediaItems.length === 0 && !repostOf)) 
+                            ? 'bg-neutral-700 text-neutral-400 cursor-not-allowed shadow-none opacity-50' 
+                            : 'bg-[var(--accent)] hover:brightness-110 text-[var(--btn-text-primary)] hover:shadow-lg transform hover:-translate-y-0.5 cursor-pointer'
+                        }`}
                 >
                     {creating ? (
                         <span className="flex items-center justify-center gap-2">
@@ -678,3 +851,4 @@ export function CreatePostForm({ onPostCreated, parentId, repostOf, parentAuthor
         </form>
     );
 }
+

@@ -6,8 +6,8 @@
 
 import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk";
 import { InputTransactionData } from "@aptos-labs/wallet-adapter-react";
-import { getCurrentNetworkConfig, getModuleAddress, convertToMovementAddress, isValidMovementAddress } from "./movement";
-import { getGasEstimation } from "./movementClient"; // Keep for future use or remove if strict
+import { getCurrentNetworkConfig, getModuleAddress, convertToMovementAddress, isValidMovementAddress, octasToMove, TIPJAR_MODULE_ADDRESS } from "./movement";
+import { getGasEstimation, safeGetAccountResource, getAptosClient } from "./movementClient"; // Keep for future use or remove if strict
 
 export interface OnChainPost {
     id: number;
@@ -26,16 +26,60 @@ export interface OnChainPost {
 }
 
 // Helper to get dynamic client based on current network
+// Suppress SDK console warnings about CUSTOM network
 function getClient() {
     const currentConfig = getCurrentNetworkConfig();
+    
+    // Temporarily suppress console.log to hide SDK warnings
+    const originalLog = console.log;
+    const originalWarn = console.warn;
+    const originalInfo = console.info;
+    
+    const suppressSDKWarnings = (...args: any[]) => {
+        const message = args[0]?.toString?.() || '';
+        if (message.includes('CUSTOM network') || message.includes('lookup ChainId')) {
+            return false; // Suppress this message
+        }
+        return true; // Allow this message
+    };
+    
+    console.log = (...args: any[]) => {
+        if (suppressSDKWarnings(...args)) {
+            originalLog.apply(console, args);
+        }
+    };
+    console.warn = (...args: any[]) => {
+        if (suppressSDKWarnings(...args)) {
+            originalWarn.apply(console, args);
+        }
+    };
+    console.info = (...args: any[]) => {
+        if (suppressSDKWarnings(...args)) {
+            originalInfo.apply(console, args);
+        }
+    };
+    
     const config = new AptosConfig({
         network: Network.CUSTOM,
         fullnode: currentConfig.rpcUrl,
     });
-    return new Aptos(config);
+    
+    const client = new Aptos(config);
+    
+    // Restore console functions after a short delay
+    setTimeout(() => {
+        console.log = originalLog;
+        console.warn = originalWarn;
+        console.info = originalInfo;
+    }, 100);
+    
+    return client;
 }
 
 const MODULE_NAME = "move_feed_v13";
+// Profile cache to avoid repeated 404 requests
+const profileCache = new Map<string, { name?: string; avatar?: string; profile?: any; timestamp: number }>();
+const PROFILE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // Helper to safely extract string from Move String or raw string
 const getString = (val: any): string => {
@@ -51,12 +95,17 @@ const getString = (val: any): string => {
 // Helper to check for 404 / Not Found errors from Aptos SDK or Proxy
 const isNotFound = (error: any): boolean => {
     if (!error) return false;
+    // Check for various forms of "not found" errors
+    const msg = error.message || error.toString() || "";
     return (
         error.status === 404 || 
-        error.message?.includes("resource_not_found") || 
+        msg.includes("resource_not_found") || 
         error.error_code === "resource_not_found" ||
-        error.message?.includes("Not Found") || // Generic 404 message
-        (error.message?.includes("module_not_found"))
+        msg.includes("account_not_found") || 
+        error.error_code === "account_not_found" || 
+        msg.includes("Account not found") || 
+        msg.includes("Not Found") || 
+        msg.includes("module_not_found")
     );
 };
 
@@ -97,19 +146,41 @@ export async function createPostOnChain(
     content: string,
     imageUrl: string,
     style: number,
-    signAndSubmitTransaction: (transaction: InputTransactionData) => Promise<any>
+    signAndSubmitTransaction: (transaction: InputTransactionData) => Promise<any>,
+    userAddress?: string // Optional: user address to check account existence
 ): Promise<number | null> {
     const MODULE_ADDRESS = getModuleAddress();
     if (!MODULE_ADDRESS) throw new Error("Mainnet contract address not configured. Please deploy the contract and update src/lib/movement.ts");
 
+    // Check if signAndSubmitTransaction is available (wallet is connected)
+    if (!signAndSubmitTransaction) {
+        throw new Error("Wallet is not connected. Please connect your wallet first.");
+    }
+
+    // Optional: Check if account exists before attempting transaction
+    // This helps provide better error messages, but we don't fail if check fails
+    if (userAddress) {
+        try {
+            const client = getClient();
+            await client.getAccountInfo({ accountAddress: userAddress });
+        } catch (e: any) {
+            // If account doesn't exist, we'll let the transaction fail with a clearer error
+            // Don't throw here - let the transaction attempt proceed
+            // The error will be caught and handled below
+        }
+    }
+
     // Explicitly define type arguments as empty for non-generic entry functions
     // This helps some wallets avoid misinterpretation
+    // IMPORTANT: No gas options here - let wallet handle gas estimation automatically
+    // This prevents wallets from misinterpreting the transaction as a coin transfer
     const transaction: InputTransactionData = {
         data: {
             function: `${MODULE_ADDRESS}::${MODULE_NAME}::create_post`,
             typeArguments: [],
             functionArguments: [content, imageUrl],
         },
+        // Explicitly do NOT include options to avoid wallet misinterpretation
     };
 
     try {
@@ -120,9 +191,9 @@ export async function createPostOnChain(
             // We can't simulate easily without the sender's public key or account object
             // which useWallet doesn't expose directly for simulation without prompt.
             // But we can assume if the payload is standard, it should work.
-            console.log("Preparing create_post transaction...", transaction);
+            // Removed console.log for production - use browser devtools if needed
         } catch (e) {
-            console.warn("Simulation check skipped");
+            // Simulation check skipped - this is normal and expected
         }
 
         const response = await signAndSubmitTransaction(transaction);
@@ -145,8 +216,19 @@ export async function createPostOnChain(
         }
         
         return null;
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error creating post:", error);
+        
+        // Provide more specific error messages
+        if (error?.name === 'WalletNotConnectedError' || error?.message?.includes('WalletNotConnected') || error?.message?.includes('not connected')) {
+            throw new Error("Wallet is not connected. Please connect your wallet first.");
+        }
+        
+        // Handle account_not_found error
+        if (error?.error_code === 'account_not_found' || error?.message?.includes('Account not found')) {
+            throw new Error("Account not found on blockchain. Please ensure your account has been initialized with at least one transaction.");
+        }
+        
         throw error;
     }
 }
@@ -162,6 +244,11 @@ export async function createCommentOnChain(
 ): Promise<void> {
     const MODULE_ADDRESS = getModuleAddress();
     if (!MODULE_ADDRESS) throw new Error("Mainnet contract address not configured. Please deploy the contract and update src/lib/movement.ts");
+
+    // Check if signAndSubmitTransaction is available (wallet is connected)
+    if (!signAndSubmitTransaction) {
+        throw new Error("Wallet is not connected. Please connect your wallet first.");
+    }
 
     // Explicitly define type arguments as empty
     const transaction: InputTransactionData = {
@@ -179,8 +266,14 @@ export async function createCommentOnChain(
 
         // Dispatch event for UI refresh
         window.dispatchEvent(new Event('comment_added'));
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error creating comment:", error);
+        
+        // Provide more specific error messages
+        if (error?.name === 'WalletNotConnectedError' || error?.message?.includes('WalletNotConnected') || error?.message?.includes('not connected')) {
+            throw new Error("Wallet is not connected. Please connect your wallet first.");
+        }
+        
         throw error;
     }
 }
@@ -255,10 +348,8 @@ export async function getGlobalPostsCount(): Promise<number> {
 
     try {
         const client = getClient();
-        const feed = await client.getAccountResource({
-            accountAddress: MODULE_ADDRESS,
-            resourceType: `${MODULE_ADDRESS}::move_feed_v12::GlobalFeed`
-        }) as any;
+        const feed = await safeGetAccountResource(client, MODULE_ADDRESS, `${MODULE_ADDRESS}::move_feed_v13::GlobalFeed`);
+        if (!feed) return 0;
         return Number(feed.post_counter);
     } catch (error: any) {
         if (isNotFound(error)) {
@@ -380,10 +471,8 @@ export async function getGlobalPosts(page: number = 0, limit: number = 10): Prom
 
     try {
         const client = getClient();
-        const feed = await client.getAccountResource({
-            accountAddress: MODULE_ADDRESS,
-            resourceType: `${MODULE_ADDRESS}::move_feed_v12::GlobalFeed`
-        }) as any;
+        const feed = await safeGetAccountResource(client, MODULE_ADDRESS, `${MODULE_ADDRESS}::move_feed_v13::GlobalFeed`);
+        if (!feed) return [];
 
         const allPosts = feed.posts as any[];
         
@@ -433,7 +522,7 @@ export async function getUserPostsPaginated(userAddress: string, start: number, 
         const client = getClient();
         const feed = await client.getAccountResource({
             accountAddress: MODULE_ADDRESS,
-            resourceType: `${MODULE_ADDRESS}::move_feed_v12::GlobalFeed`
+            resourceType: `${MODULE_ADDRESS}::move_feed_v13::GlobalFeed`
         }) as any;
 
         const allPosts = feed.posts as any[];
@@ -491,7 +580,7 @@ export async function getAllPosts(): Promise<OnChainPost[]> {
         const result = await client.view({ payload });
         const posts = result[0] as any[];
 
-        console.log("Raw posts from chain:", posts);
+        // Removed debug console.log - use browser devtools if needed
 
         return posts
             .map((post: any) => ({
@@ -578,7 +667,7 @@ export async function getUserPostsCount(userAddress: string): Promise<number> {
         const client = getClient();
         const feed = await client.getAccountResource({
             accountAddress: MODULE_ADDRESS,
-            resourceType: `${MODULE_ADDRESS}::move_feed_v12::GlobalFeed`
+            resourceType: `${MODULE_ADDRESS}::move_feed_v13::GlobalFeed`
         }) as any;
 
         const allPosts = feed.posts as any[];
@@ -604,19 +693,39 @@ export async function getDisplayName(userAddress: string): Promise<string> {
     const MODULE_ADDRESS = getModuleAddress();
     if (!MODULE_ADDRESS) return "";
 
+    const normalizedAddress = convertToMovementAddress(userAddress);
+    const cacheKey = `name_${normalizedAddress}`;
+    
+    // Check cache first
+    const cached = profileCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < PROFILE_CACHE_TTL && cached.name !== undefined) {
+        return cached.name;
+    }
+
     try {
         const client = getClient();
-        const profile = await client.getAccountResource({
-            accountAddress: convertToMovementAddress(userAddress),
-            resourceType: `${MODULE_ADDRESS}::move_feed_v12::Profile`
-        }) as any;
+        const profile = await safeGetAccountResource(client, normalizedAddress, `${MODULE_ADDRESS}::move_feed_v13::Profile`);
 
-        return getString(profile.name);
-    } catch (error: any) {
-        // Silence 404s (Profile not initialized)
-        if (isNotFound(error)) {
-             return "";
+        if (!profile) {
+            // Profile not found - cache it
+            const existing = profileCache.get(cacheKey) || { timestamp: Date.now() };
+            existing.name = "";
+            profileCache.set(cacheKey, existing);
+            return "";
         }
+
+        const name = getString(profile.name);
+        
+        // Cache the result (even if empty)
+        const existing = profileCache.get(cacheKey) || { timestamp: Date.now() };
+        existing.name = name;
+        profileCache.set(cacheKey, existing);
+        
+        return name;
+    } catch (error: any) {
+        // Only log errors that are not 404s (safeGetAccountResource already handles 404 by returning null, but if account missing it might still throw?)
+        // safeGetAccountResource catches account missing 404 and returns null too.
+        // So we might not hit this catch block for 404s anymore.
         console.error("Error fetching display name:", error);
         return "";
     }
@@ -649,10 +758,7 @@ export async function getUserTipStats(userAddress: string): Promise<{
 
         // 1. Get Total Received (from Registry)
         try {
-            const registry = await client.getAccountResource({
-                accountAddress: MODULE_ADDRESS,
-                resourceType: `${MODULE_ADDRESS}::donations_v12::Registry`
-            }) as any;
+            const registry = await safeGetAccountResource(client, MODULE_ADDRESS, `${MODULE_ADDRESS}::donations_v10::Registry`);
 
             if (registry && registry.total_tips && registry.total_tips.handle) {
                 const item = await client.getTableItem({
@@ -671,10 +777,7 @@ export async function getUserTipStats(userAddress: string): Promise<{
 
         // 2. Get Total Sent (from TopTipperStats)
         try {
-            const stats = await client.getAccountResource({
-                accountAddress: MODULE_ADDRESS,
-                resourceType: `${MODULE_ADDRESS}::donations_v12::TopTipperStats`
-            }) as any;
+            const stats = await safeGetAccountResource(client, MODULE_ADDRESS, `${MODULE_ADDRESS}::donations_v10::TopTipperStats`);
 
             if (stats && stats.sent_counts && stats.sent_counts.handle) {
                 const item = await client.getTableItem({
@@ -720,24 +823,49 @@ export async function getProfile(address: string): Promise<ProfileData | null> {
     const MODULE_ADDRESS = getModuleAddress();
     if (!MODULE_ADDRESS) return null;
 
+    const normalizedAddress = convertToMovementAddress(address);
+    const cacheKey = `profile_${normalizedAddress}`;
+    
+    // Check cache first
+    const cached = profileCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < PROFILE_CACHE_TTL && cached.profile !== undefined) {
+        return cached.profile;
+    }
+
     try {
         const client = getClient();
-        const profile = await client.getAccountResource({
-            accountAddress: convertToMovementAddress(address),
-            resourceType: `${MODULE_ADDRESS}::move_feed_v13::Profile`
-        }) as any;
+        const profile = await safeGetAccountResource(client, normalizedAddress, `${MODULE_ADDRESS}::move_feed_v13::Profile`);
 
-        return {
+        if (!profile) {
+            // Profile not found - cache it
+            const existing = profileCache.get(cacheKey) || { timestamp: Date.now() };
+            existing.profile = null;
+            profileCache.set(cacheKey, existing);
+            return null;
+        }
+
+        const profileData = {
             name: getString(profile.name),
             bio: getString(profile.bio),
             avatar_url: getString(profile.avatar_url),
         };
-
+        
+        // Cache the result
+        const existing = profileCache.get(cacheKey) || { timestamp: Date.now() };
+        existing.profile = profileData;
+        profileCache.set(cacheKey, existing);
+        
+        return profileData;
     } catch (error: any) {
-        // Silence 404s (Profile not initialized)
+        // Silence 404s (Profile not initialized) - this is normal for new users
         if (isNotFound(error)) {
-             return null;
+            // Cache null to avoid repeated requests
+            const existing = profileCache.get(cacheKey) || { timestamp: Date.now() };
+            existing.profile = null;
+            profileCache.set(cacheKey, existing);
+            return null;
         }
+        // Only log non-404 errors
         console.error("Error fetching profile:", error);
         return null;
     }
@@ -750,7 +878,8 @@ export async function setProfile(
     displayName: string,
     bio: string,
     avatarUrl: string,
-    signAndSubmitTransaction: (transaction: InputTransactionData) => Promise<any>
+    signAndSubmitTransaction: (transaction: InputTransactionData) => Promise<any>,
+    userAddress: string
 ): Promise<void> {
     const MODULE_ADDRESS = getModuleAddress();
     if (!MODULE_ADDRESS) throw new Error("Mainnet contract address not configured. Please deploy the contract and update src/lib/movement.ts");
@@ -766,8 +895,16 @@ export async function setProfile(
         const response = await signAndSubmitTransaction(transaction);
         const client = getClient();
         await client.waitForTransaction({ transactionHash: response.hash });
-    } catch (error) {
-        console.error("Error setting profile:", error);
+        
+        // Invalidate cache after profile update
+        const normalizedAddress = convertToMovementAddress(userAddress);
+        profileCache.delete(`profile_${normalizedAddress}`);
+        profileCache.delete(`name_${normalizedAddress}`);
+        profileCache.delete(`avatar_${normalizedAddress}`);
+    } catch (error: any) {
+        if (!isNotFound(error)) {
+            console.error("Error setting profile:", error);
+        }
         throw error;
     }
 }
@@ -796,7 +933,7 @@ export async function setDisplayName(
                 avatarUrl = profile.avatar_url;
             }
         } catch (e) {
-            console.warn("Could not fetch existing profile, resetting bio/avatar", e);
+            // Profile doesn't exist yet, will be created - this is normal for new users
         }
     }
 
@@ -811,6 +948,13 @@ export async function setDisplayName(
         const response = await signAndSubmitTransaction(transaction);
         const client = getClient();
         await client.waitForTransaction({ transactionHash: response.hash });
+        
+        // Invalidate cache after profile update
+        if (userAddress) {
+            const normalizedAddress = convertToMovementAddress(userAddress);
+            profileCache.delete(`profile_${normalizedAddress}`);
+            profileCache.delete(`name_${normalizedAddress}`);
+        }
     } catch (error) {
         console.error("Error setting display name:", error);
         throw error;
@@ -841,7 +985,7 @@ export async function setAvatar(
                 bio = profile.bio;
             }
         } catch (e) {
-            console.warn("Could not fetch existing profile, resetting name/bio", e);
+            // Profile doesn't exist yet, will be created - this is normal for new users
         }
     }
 
@@ -856,6 +1000,13 @@ export async function setAvatar(
         const response = await signAndSubmitTransaction(transaction);
         const client = getClient();
         await client.waitForTransaction({ transactionHash: response.hash });
+        
+        // Invalidate cache after profile update
+        if (userAddress) {
+            const normalizedAddress = convertToMovementAddress(userAddress);
+            profileCache.delete(`profile_${normalizedAddress}`);
+            profileCache.delete(`avatar_${normalizedAddress}`);
+        }
     } catch (error) {
         console.error("Error setting avatar:", error);
         throw error;
@@ -871,33 +1022,236 @@ export async function getAvatar(userAddress: string): Promise<string> {
         return `https://api.dicebear.com/7.x/identicon/svg?seed=${userAddress || 'default'}`;
     }
 
-    // Force rebuild
     const MODULE_ADDRESS = getModuleAddress();
     if (!MODULE_ADDRESS) {
         return `https://api.dicebear.com/7.x/identicon/svg?seed=${userAddress}`;
     }
 
+    const normalizedAddress = convertToMovementAddress(userAddress);
+    const cacheKey = `avatar_${normalizedAddress}`;
+    
+    // Check cache first
+    const cached = profileCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < PROFILE_CACHE_TTL && cached.avatar !== undefined) {
+        return cached.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${userAddress}`;
+    }
+
     try {
         const client = getClient();
-        const profile = await client.getAccountResource({
-            accountAddress: convertToMovementAddress(userAddress),
-            resourceType: `${MODULE_ADDRESS}::move_feed_v13::Profile`
-        }) as any;
+        const profile = await safeGetAccountResource(client, normalizedAddress, `${MODULE_ADDRESS}::move_feed_v13::Profile`);
+
+        if (!profile) {
+             // Cache the "not found" result to avoid repeated requests
+             const existing = profileCache.get(cacheKey) || { timestamp: Date.now() };
+             existing.avatar = "";
+             profileCache.set(cacheKey, existing);
+             return `https://api.dicebear.com/7.x/identicon/svg?seed=${userAddress}`;
+        }
 
         const avatarUrl = getString(profile.avatar_url);
+
+        // Cache the result
+        const existing = profileCache.get(cacheKey) || { timestamp: Date.now() };
+        existing.avatar = avatarUrl || "";
+        profileCache.set(cacheKey, existing);
 
         if (avatarUrl) {
             return avatarUrl;
         }
     } catch (error: any) {
+        // Silence 404s (Profile not initialized) - this is normal for new users
         if (isNotFound(error)) {
-            // Profile not initialized, fallback to default
-        } else {
-             // Silently fail and return default
-             // console.error("Error fetching avatar:", error);
+            // Cache the "not found" result to avoid repeated requests
+            const existing = profileCache.get(cacheKey) || { timestamp: Date.now() };
+            existing.avatar = "";
+            profileCache.set(cacheKey, existing);
         }
+        // Silently fail and return default - no need to log 404s
     }
 
     // Generate a consistent avatar URL based on the user address
     return `https://api.dicebear.com/7.x/identicon/svg?seed=${userAddress}`;
+}
+
+/**
+ * Clear profile cache for a specific address (useful after profile updates)
+ */
+export function clearProfileCache(address?: string): void {
+    if (address) {
+        const normalizedAddress = convertToMovementAddress(address);
+        profileCache.delete(`profile_${normalizedAddress}`);
+        profileCache.delete(`name_${normalizedAddress}`);
+        profileCache.delete(`avatar_${normalizedAddress}`);
+    } else {
+        // Clear all cache
+        profileCache.clear();
+    }
+}
+
+/**
+ * Fetch tip history for a specific address
+ * 
+ * - Received tips: Fetched from TipEvent events on-chain (includes real tx hash)
+ * - Sent tips: Fetched from local storage (private, only visible to owner)
+ */
+export async function getTipHistory(targetAddress?: string) {
+  try {
+    // Determine address to fetch for
+    let addressToCheck = targetAddress;
+    let currentUserAddress = '';
+
+    if (typeof window !== 'undefined') {
+      currentUserAddress = localStorage.getItem('movement_last_connected_address') || '';
+      if (!addressToCheck) {
+        addressToCheck = currentUserAddress;
+      }
+    }
+
+    if (!addressToCheck) {
+      return [];
+    }
+
+    // Normalize address to Movement format (32 bytes) for consistent matching
+    const normalizedAddress = convertToMovementAddress(addressToCheck);
+    
+    // 1. Fetch Tips from Events (Received AND Sent)
+    let onChainTips: any[] = [];
+    try {
+      // const client = getAptosClient();
+      // const eventType = `${TIPJAR_MODULE_ADDRESS}::MoveFeed::TipEvent`;
+
+      // Fetch events from the module
+      // TODO: Update to use new Aptos SDK Indexer API as getModuleEventsByEventType is deprecated
+      const events: any[] = []; 
+      /* await client.getModuleEventsByEventType({
+        eventType: eventType as `${string}::${string}::${string}`,
+      }); */
+
+      onChainTips = events
+        .filter((e: any) => {
+          // Filter where we are either the creator (receiver) or tipper (sender)
+          // Normalize event addresses to ensure consistent comparison
+          const eventCreator = convertToMovementAddress(e.data.creator);
+          const eventTipper = convertToMovementAddress(e.data.tipper);
+
+          const isReceiver = eventCreator === normalizedAddress;
+          const isSender = eventTipper === normalizedAddress;
+
+          return isReceiver || isSender;
+        })
+        .map((e: any) => {
+          const eventCreator = convertToMovementAddress(e.data.creator);
+          const isReceiver = eventCreator === normalizedAddress;
+
+          return {
+            sender: e.data.tipper,
+            receiver: e.data.creator,
+            amount: octasToMove(parseInt(e.data.amount)),
+            timestamp: parseInt(e.data.timestamp),
+            hash: e.transaction_version, // Use version as hash/ID for explorer
+            postId: e.data.post_id,
+            type: isReceiver ? 'received' : 'sent'
+          };
+        });
+
+    } catch (eventError) {
+      console.error("Error fetching tip events:", eventError);
+      // Fallback to post-based derivation if event fetching fails (only for received)
+      // Check last 100 posts for tips as a scalable fallback
+      let posts: any[] = [];
+      try {
+        const count = await getUserPostsCount(normalizedAddress);
+        const LIMIT = 100;
+        const start = Math.max(0, count - LIMIT);
+        posts = await getUserPostsPaginated(normalizedAddress, start, LIMIT);
+      } catch (err) {
+        console.error("Error fetching fallback posts for tips:", err);
+      }
+
+      const fallbackReceived = posts
+        .filter(post => post.total_tips > 0)
+        .map(post => ({
+          sender: 'Tips on Post',
+          receiver: normalizedAddress,
+          amount: octasToMove(post.total_tips),
+          timestamp: post.last_tip_timestamp || post.timestamp,
+          hash: `post-${post.id}`, // Fallback hash
+          postId: post.id.toString(),
+          type: 'received'
+        }));
+      onChainTips = fallbackReceived;
+    }
+
+    // Filter out received tips based on snapshot (for "Clear Activity" feature)
+    let filteredTips = onChainTips;
+    if (typeof window !== 'undefined') {
+      try {
+        const clearedAt = parseInt(localStorage.getItem('received_tips_cleared_at') || '0');
+        if (clearedAt > 0) {
+          filteredTips = onChainTips.filter(tip => tip.timestamp > clearedAt);
+        }
+      } catch (e) {
+        console.error("Error filtering tips", e);
+      }
+    }
+
+    // 2. Fetch Sent Tips (Server API)
+    let localSentTips: any[] = [];
+    if (addressToCheck) {
+      try {
+        const res = await fetch(`/api/tips?userAddress=${addressToCheck}`);
+        if (res.ok) {
+            const contentType = res.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                const serverTips = await res.json();
+                localSentTips = serverTips.map((tip: any) => ({
+                ...tip,
+                // Normalize timestamp to seconds if it's in milliseconds
+                timestamp: tip.timestamp > 100000000000 ? Math.floor(tip.timestamp / 1000) : tip.timestamp
+                }));
+            } else {
+                const text = await res.text();
+                console.warn(`API /api/tips returned non-JSON response: ${text.substring(0, 100)}...`);
+            }
+        } else {
+            // Log the error details from the server
+            const errBody = await res.text();
+            console.error(`Error reading tips from API (${res.status}):`, errBody);
+        }
+      } catch (e) {
+        console.error("Error reading tips from API", e);
+      }
+    }
+
+    // Merge and Sort
+    // Combine on-chain tips with local tips
+    const allTips = [...filteredTips, ...localSentTips];
+
+    // Deduplicate by hash/version
+    // Local tips might not have a version/hash immediately, or might conflict
+    // We prioritize on-chain tips if hashes match
+    const uniqueTipsMap = new Map();
+
+    allTips.forEach(tip => {
+      // If tip has a hash, use it as key. If not (some local tips?), use timestamp+amount
+      const key = tip.hash || `${tip.timestamp}-${tip.amount}`;
+
+      if (!uniqueTipsMap.has(key)) {
+        uniqueTipsMap.set(key, tip);
+      } else {
+        // If we already have it, prefer the one with a real hash (likely on-chain)
+        const existing = uniqueTipsMap.get(key);
+        if (!existing.hash || existing.hash.startsWith('post-')) {
+          if (tip.hash && !tip.hash.startsWith('post-')) {
+            uniqueTipsMap.set(key, tip);
+          }
+        }
+      }
+    });
+
+    return Array.from(uniqueTipsMap.values()).sort((a, b) => b.timestamp - a.timestamp);
+  } catch (error) {
+    console.error('Error fetching tip history:', error);
+    return [];
+  }
 }

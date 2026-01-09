@@ -50,8 +50,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 const data: Conversation[] = await res.json();
                 setConversations(data);
                 
-                // Calculate total unread
-                const total = data.reduce((acc, curr) => acc + (curr.unreadCount || 0), 0);
+                // Calculate total unread (count of conversations with unread messages)
+                const total = data.filter(c => (c.unreadCount || 0) > 0).length;
                 setTotalUnreadCount(total);
             }
         } catch (error) {

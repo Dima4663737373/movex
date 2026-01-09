@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useNotifications } from "@/components/Notifications";
 import PostCard from "@/components/PostCard";
 import { CreatePostForm } from "@/components/CreatePostForm";
-import { getDisplayName, getUserPostsPaginated, getUserPostsCount, OnChainPost, getAvatar, getGlobalPostsCount, getGlobalPosts, getAllPosts, getPost, getCommentsForPost } from "@/lib/microThreadsClient";
-import { getTipHistory, getStats } from "@/lib/movementClient";
+import { getDisplayName, getUserPostsPaginated, getUserPostsCount, OnChainPost, getAvatar, getGlobalPostsCount, getGlobalPosts, getAllPosts, getPost, getCommentsForPost, getTipHistory } from "@/lib/microThreadsClient";
+import { getStats } from "@/lib/movementClient";
 import { octasToMove } from "@/lib/movement";
 import AuthGuard from "@/components/AuthGuard";
 import StatsBlock from "@/components/StatsBlock";
@@ -478,6 +478,17 @@ export default function FeedPage() {
         .filter(post => {
             const id = post.id.toString();
             const globalId = post.global_id?.toString() || "";
+            
+            // Check for schedule tag
+            const scheduleMatch = post.content.match(/\[schedule:(\d+)\]/);
+            if (scheduleMatch) {
+                const scheduledTime = parseInt(scheduleMatch[1]);
+                // If scheduled time is in the future, hide it from feed
+                if (scheduledTime > Date.now() / 1000) {
+                    return false;
+                }
+            }
+
             return !hiddenPosts.has(id) && (globalId === "" || !hiddenPosts.has(globalId));
         })
         .sort((a, b) => b.timestamp - a.timestamp);
@@ -502,33 +513,25 @@ export default function FeedPage() {
                         <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--card-border)]">
                             <h2 className="text-xl font-bold text-[var(--text-primary)]">{t.latestPosts}</h2>
                             <div className="flex gap-2">
-                                <button 
-                                    onClick={fetchGlobalData}
-                                    className="p-2 text-[var(--text-secondary)] hover:text-[var(--accent)] hover:bg-[var(--card-bg)] rounded-full transition-colors"
-                                    title={t.refreshFeed}
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                    </svg>
-                                </button>
+                                
                             </div>
                         </div>
                                 
                                 {loadingGlobal && globalPosts.length === 0 ? (
                                     <div className="">
-                                        {[1, 2, 3].map(i => (
-                                            <div key={i} className="bg-[var(--card-bg)] border-b border-[var(--card-border)] p-4 animate-pulse h-48">
+                                        {[1, 2, 3, 4, 5].map(i => (
+                                            <div key={i} className="bg-[var(--card-bg)] border-b border-[var(--card-border)] p-4 animate-pulse">
                                                 <div className="flex gap-4">
-                                                    <div className="w-12 h-12 rounded-full bg-[var(--card-border)]"></div>
-                                                    <div className="flex-1 space-y-3">
-                                                        <div className="h-4 bg-[var(--card-border)] rounded w-1/4"></div>
-                                                        <div className="h-16 w-full bg-[var(--card-border)] rounded"></div>
+                                                    <div className="w-12 h-12 rounded-full bg-[var(--card-border)] shrink-0"></div>
+                                                    <div className="flex-1 space-y-3 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="h-4 bg-[var(--card-border)] rounded w-32"></div>
+                                                            <div className="h-4 bg-[var(--card-border)] rounded w-20"></div>
+                                                        </div>
+                                                        <div className="h-4 bg-[var(--card-border)] rounded w-full"></div>
+                                                        <div className="h-4 bg-[var(--card-border)] rounded w-3/4"></div>
+                                                        <div className="h-48 w-full bg-[var(--card-border)] rounded-xl mt-2"></div>
                                                     </div>
-                                                </div>
-                                                <div className="mt-4 space-y-2">
-                                                    <div className="h-4 bg-[var(--card-border)] rounded w-full"></div>
-                                                    <div className="h-4 bg-[var(--card-border)] rounded w-5/6"></div>
-                                                    <div className="h-4 bg-[var(--card-border)] rounded w-4/6"></div>
                                                 </div>
                                             </div>
                                         ))}

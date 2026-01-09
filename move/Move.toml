@@ -1,6 +1,6 @@
 [package]
 name = "MinesV3"
-version = "1.0.0"
+version = "1.0.1"
 upgrade_policy = "compatible"
 
 [addresses]

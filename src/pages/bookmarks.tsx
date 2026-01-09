@@ -1,5 +1,5 @@
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Head from "next/head";
 import AuthGuard from "@/components/AuthGuard";
 import { getDisplayName, getAvatar, getPost } from "@/lib/microThreadsClient";
@@ -43,57 +43,72 @@ export default function BookmarksPage() {
         fetchProfile();
     }, [connected, userAddress]);
 
-    // Load Bookmarks
+    // Load Bookmarks function
+    const loadBookmarks = useCallback(async () => {
+        if (!connected || !userAddress) {
+            setLoading(false);
+            return;
+        }
+
+        try {
+            setLoading(true);
+            
+            const res = await fetch(`/api/bookmarks?userAddress=${userAddress}`);
+            let bookmarkMessages: SavedMessage[] = [];
+            
+            if (res.ok) {
+                const data = await res.json();
+                const bookmarkIds = data.bookmarks.map((b: any) => {
+                    const parts = b.key.split('_');
+                    return parseInt(parts[parts.length - 1]);
+                }).filter((id: number) => !isNaN(id));
+
+                const postPromises = bookmarkIds.map((id: number) => getPost(id));
+                const fetchedPosts = await Promise.all(postPromises);
+                
+                bookmarkMessages = fetchedPosts
+                    .filter((p): p is any => p !== null)
+                    .map(post => ({
+                        id: `bookmark_${post.id}`,
+                        type: 'bookmark',
+                        content: {
+                            ...post,
+                            createdAt: (post.createdAt || post.timestamp) * 1000,
+                            timestamp: (post.timestamp || post.createdAt) * 1000,
+                            totalTips: post.total_tips ? Number(post.total_tips) : (post.totalTips ? Number(post.totalTips) : 0)
+                        },
+                        timestamp: (post.timestamp || post.createdAt) * 1000 // Convert to ms
+                    }));
+            }
+
+            // Sort by timestamp descending
+            setMessages(bookmarkMessages.sort((a, b) => b.timestamp - a.timestamp));
+
+        } catch (error) {
+            console.error("Error loading bookmarks:", error);
+        } finally {
+            setLoading(false);
+        }
+    }, [connected, userAddress]);
+
+    // Load Bookmarks on mount and when user changes
     useEffect(() => {
-        const loadBookmarks = async () => {
-            if (!connected || !userAddress) {
-                setLoading(false);
-                return;
-            }
+        loadBookmarks();
+    }, [loadBookmarks]);
 
-            try {
-                setLoading(true);
-                
-                const res = await fetch(`/api/bookmarks?userAddress=${userAddress}`);
-                let bookmarkMessages: SavedMessage[] = [];
-                
-                if (res.ok) {
-                    const data = await res.json();
-                    const bookmarkIds = data.bookmarks.map((b: any) => {
-                        const parts = b.key.split('_');
-                        return parseInt(parts[parts.length - 1]);
-                    }).filter((id: number) => !isNaN(id));
-
-                    const postPromises = bookmarkIds.map((id: number) => getPost(id));
-                    const fetchedPosts = await Promise.all(postPromises);
-                    
-                    bookmarkMessages = fetchedPosts
-                        .filter((p): p is any => p !== null)
-                        .map(post => ({
-                            id: `bookmark_${post.id}`,
-                            type: 'bookmark',
-                            content: {
-                                ...post,
-                                createdAt: (post.createdAt || post.timestamp) * 1000,
-                                timestamp: (post.timestamp || post.createdAt) * 1000,
-                                totalTips: post.total_tips ? Number(post.total_tips) : (post.totalTips ? Number(post.totalTips) : 0)
-                            },
-                            timestamp: (post.timestamp || post.createdAt) * 1000 // Convert to ms
-                        }));
-                }
-
-                // Sort by timestamp descending
-                setMessages(bookmarkMessages.sort((a, b) => b.timestamp - a.timestamp));
-
-            } catch (error) {
-                console.error("Error loading bookmarks:", error);
-            } finally {
-                setLoading(false);
-            }
+    // Listen for bookmark changes and reload
+    useEffect(() => {
+        const handleBookmarkChange = () => {
+            // Reload bookmarks when bookmark is added/removed
+            loadBookmarks();
         };
 
-        loadBookmarks();
-    }, [connected, userAddress]);
+        window.addEventListener('bookmark_changed', handleBookmarkChange);
+        
+        return () => {
+            window.removeEventListener('bookmark_changed', handleBookmarkChange);
+        };
+    }, [loadBookmarks]);
 
     return (
         <AuthGuard>

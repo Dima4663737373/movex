@@ -16,6 +16,7 @@ import CalendarModal from "@/components/CalendarModal";
 import { useNotifications } from "@/components/Notifications";
 import { useChat } from "@/contexts/ChatContext";
 import ConversationList from "@/components/chat/ConversationList";
+import SavedMessagesView from "@/components/chat/SavedMessagesView";
 import { Message, Conversation, Profile } from "@/types/chat";
 
 export default function ChatPage() {
@@ -271,8 +272,23 @@ export default function ChatPage() {
         
         await Promise.all(toFetch.map(async (addr) => {
             try {
-                const displayName = await getDisplayName(addr);
+                let displayName = await getDisplayName(addr);
                 const avatar = await getAvatar(addr);
+
+                if (!displayName || displayName === "Anonymous User") {
+                    try {
+                        const res = await fetch(`/api/profile?address=${addr}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.name) {
+                                displayName = data.name;
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Error fetching off-chain profile", err);
+                    }
+                }
+
                 fetched[addr] = { displayName, avatar };
             } catch (e) {
                 console.error(`Failed to fetch profile for ${addr}`, e);
@@ -523,9 +539,19 @@ export default function ChatPage() {
 
     const startNewChat = (address: string) => {
         if (address.trim()) {
-            setActiveContact(address.trim());
+            handleContactSelect(address.trim());
             setIsNewChatOpen(false);
             setSearchQuery("");
+        }
+    };
+
+    const handleContactSelect = (contact: string | null) => {
+        setActiveContact(contact);
+        if (contact) {
+            router.push(`/chat?user=${contact}`, undefined, { shallow: true });
+        } else {
+            const { user, ...rest } = router.query;
+            router.push({ pathname: '/chat', query: rest }, undefined, { shallow: true });
         }
     };
 
@@ -536,38 +562,40 @@ export default function ChatPage() {
             </Head>
 
             {/* MainLayout is applied in _app.tsx, so we just provide content */}
-            <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] h-full gap-y-8 lg:gap-x-0 lg:divide-x lg:divide-[var(--card-border)] pt-6">
+            <div className="grid grid-cols-1 sm:grid-cols-[350px_1fr] h-[calc(100vh-89px)] sm:gap-x-0 sm:divide-x sm:divide-[var(--card-border)]">
                 {/* MIDDLE: Conversations List */}
-                <div className={`flex flex-col h-full bg-[var(--bg-primary)] lg:px-6 ${activeContact ? 'hidden xl:flex' : 'flex'}`}>
+                <div className={`flex-col h-full bg-[var(--bg-primary)] pt-6 md:px-6 ${activeContact ? 'hidden sm:flex' : 'flex'}`}>
                     <ConversationList
                         conversations={conversations}
                         activeContact={activeContact}
-                        setActiveContact={setActiveContact}
+                        setActiveContact={handleContactSelect}
                         profiles={profiles}
                         userAddress={userAddress}
                         onNewChat={() => setIsNewChatOpen(true)}
                     />
                 </div>
 
-                        {/* RIGHT: Chat Window */}
-                        <div className={`flex flex-col h-full lg:px-6 ${!activeContact ? 'hidden xl:flex xl:items-center xl:justify-center' : 'flex'}`}>
-                            {!activeContact ? (
-                                <div className="text-center text-[var(--text-secondary)]">
-                                    <div className="w-20 h-20 bg-[var(--card-border)] rounded-full flex items-center justify-center mx-auto mb-4">
-                                        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                        </svg>
-                                    </div>
-                                    <p className="text-xl font-bold">Select a conversation</p>
-                                    <p>Choose a contact to start chatting</p>
-                                </div>
-                            ) : (
-                                <>
-                                    {/* Chat Header */}
+                {/* RIGHT: Chat Window */}
+                <div className={`flex flex-col h-full pt-6 md:px-6 overflow-hidden ${!activeContact ? 'hidden sm:flex' : 'flex'}`}>
+                    {!activeContact ? (
+                        <div className="flex-1 flex flex-col items-center justify-center text-center text-[var(--text-secondary)]">
+                            <div className="w-20 h-20 bg-[var(--card-border)] rounded-full flex items-center justify-center mx-auto mb-4">
+                                <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                </svg>
+                            </div>
+                            <p className="text-xl font-bold">Select a conversation</p>
+                            <p>Choose a contact to start chatting</p>
+                        </div>
+                    ) : activeContact === 'saved' ? (
+                        <SavedMessagesView />
+                    ) : (
+                        <>
+                            {/* Chat Header */}
                                     <div className="flex items-center gap-3 pb-4 border-b border-[var(--card-border)] mb-4">
                                         <button 
-                                            onClick={() => setActiveContact(null)}
-                                            className="xl:hidden p-2 -ml-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                            onClick={() => handleContactSelect(null)}
+                                            className="md:hidden p-2 -ml-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                                         >
                                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -596,7 +624,7 @@ export default function ChatPage() {
                                     </div>
 
                                     {/* Messages Area */}
-                                    <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4">
+                                    <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4 min-h-0">
                                         {messages.map((msg, idx) => {
                                             const isMe = msg.sender === userAddress;
                                             let content = msg.content;

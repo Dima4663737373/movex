@@ -21,6 +21,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 // Check specific bookmark status
                 const user = (userAddress as string).toLowerCase();
                 const pid = postId as string; 
+                
+                // Return neutral state for pending/temp posts
+                if (pid.startsWith('temp-') || pid.startsWith('pending-')) {
+                    return res.status(200).json({ bookmarked: false, count: 0 });
+                }
 
                 const { data, error } = await supabaseAdmin
                     .from('bookmarks')
@@ -50,6 +55,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             if (postId) {
                 // Just get count
                 const pid = postId as string;
+                
+                if (pid.startsWith('temp-') || pid.startsWith('pending-')) {
+                     return res.status(200).json({ count: 0, bookmarked: false });
+                }
+
                 const { count, error: countError } = await supabaseAdmin
                     .from('bookmarks')
                     .select('id', { count: 'exact', head: true })

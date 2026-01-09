@@ -14,6 +14,7 @@ import { MOVEMENT_TESTNET_RPC, MOVEMENT_TESTNET_INDEXER, convertToMovementAddres
  */
 export function getAptosClient(configOverride?: NetworkConfig): Aptos {
   const currentConfig = configOverride || getCurrentNetworkConfig();
+
   const config = new AptosConfig({
     network: Network.CUSTOM,
     fullnode: currentConfig.rpcUrl,
@@ -82,10 +83,7 @@ export async function getAuthorTips(authorAddress: string): Promise<number> {
 
     try {
         // Fetch Registry to get table handle
-        const registry = await client.getAccountResource({
-            accountAddress: minesAddress,
-            resourceType: `${minesAddress}::donations_v12::Registry`
-        }) as any;
+        const registry = await safeGetAccountResource(client, minesAddress, `${minesAddress}::donations_v10::Registry`);
 
         if (!registry || !registry.total_tips || !registry.total_tips.handle) {
             return 0;
@@ -135,10 +133,9 @@ export async function getAllAuthors(): Promise<string[]> {
     const client = getAptosClient();
 
     try {
-        const registry = await client.getAccountResource({
-            accountAddress: minesAddress,
-            resourceType: `${minesAddress}::donations_v12::Registry`
-        }) as any;
+        const registry = await safeGetAccountResource(client, minesAddress, `${minesAddress}::donations_v10::Registry`);
+
+        if (!registry) return [];
 
         return (registry.authors as string[]) || [];
 
@@ -168,12 +165,8 @@ export async function getChallenges(): Promise<any[]> {
     const client = getAptosClient();
 
     try {
-      const resource = await client.getAccountResource({
-        accountAddress: minesAddress,
-        resourceType: `${minesAddress}::challenges_v12::ChallengeRegistry`
-      });
-
-      const data = resource as any;
+      const data = await safeGetAccountResource(client, minesAddress, `${minesAddress}::challenges_v10::ChallengeRegistry`);
+      
       if (data && data.challenges) {
           return data.challenges;
       }
@@ -205,12 +198,8 @@ export async function getUserCompletedChallenges(userAddress: string): Promise<s
     const normalizedAddress = convertToMovementAddress(userAddress);
 
     try {
-      const resource = await client.getAccountResource({
-        accountAddress: normalizedAddress,
-        resourceType: `${minesAddress}::challenges_v12::UserProgress`
-      });
+      const data = await safeGetAccountResource(client, normalizedAddress, `${minesAddress}::challenges_v10::UserProgress`);
 
-      const data = resource as any;
       if (data && data.completed_challenges) {
           return data.completed_challenges; // Array of challenge IDs (strings or numbers)
       }
@@ -270,11 +259,10 @@ export async function getUserBadges(userAddress: string): Promise<any[]> {
     // 1. Get user badge IDs
     let userBadgeIds: string[] = [];
     try {
-        const userBadgesRes = await client.getAccountResource({
-            accountAddress: normalizedAddress,
-            resourceType: `${minesAddress}::badges_v12::UserBadges`
-        }) as any;
-        userBadgeIds = userBadgesRes.badges || [];
+        const userBadgesRes = await safeGetAccountResource(client, normalizedAddress, `${minesAddress}::badges_v10::UserBadges`);
+        if (userBadgesRes) {
+            userBadgeIds = userBadgesRes.badges || [];
+        }
     } catch (e) {
         // User has no badges
         return [];
@@ -283,11 +271,10 @@ export async function getUserBadges(userAddress: string): Promise<any[]> {
     // 2. Get registry badges to map IDs to details
     let allBadges: any[] = [];
     try {
-        const registryRes = await client.getAccountResource({
-            accountAddress: minesAddress,
-            resourceType: `${minesAddress}::badges_v12::BadgeRegistry`
-        }) as any;
-        allBadges = registryRes.badges || [];
+        const registryRes = await safeGetAccountResource(client, minesAddress, `${minesAddress}::badges_v10::BadgeRegistry`);
+        if (registryRes) {
+            allBadges = registryRes.badges || [];
+        }
     } catch (e) {
         // Registry not found?
         console.warn("BadgeRegistry not found");
@@ -396,186 +383,8 @@ export async function saveLocalTransaction(tip: any) {
  * Since Movement/Aptos doesn't have easy transaction history API,
  * we extract tip information from posts that have received tips
  */
-/**
- * Fetch tip history for a specific address
- * 
- * - Received tips: Fetched from on-chain posts (public)
- * - Sent tips: Fetched from local storage (private, only visible to owner)
- */
-/**
- * Fetch tip history for a specific address
- * 
- * - Received tips: Fetched from TipEvent events on-chain (includes real tx hash)
- * - Sent tips: Fetched from local storage (private, only visible to owner)
- */
-export async function getTipHistory(targetAddress?: string) {
-  try {
-    // Import here to avoid circular dependency
-    const { getUserPostsPaginated, getUserPostsCount } = await import('./microThreadsClient');
-    const { octasToMove, TIPJAR_MODULE_ADDRESS } = await import('./movement');
-    const { getAptosClient } = await import('./movementClient'); // Import from self/module
+// MOVED TO microThreadsClient.ts TO AVOID CIRCULAR DEPENDENCY
 
-    // Determine address to fetch for
-    let addressToCheck = targetAddress;
-    let currentUserAddress = '';
-
-    if (typeof window !== 'undefined') {
-      currentUserAddress = localStorage.getItem('movement_last_connected_address') || '';
-      if (!addressToCheck) {
-        addressToCheck = currentUserAddress;
-      }
-    }
-
-    if (!addressToCheck) {
-      return [];
-    }
-
-    // Normalize address to Movement format (32 bytes) for consistent matching
-    const normalizedAddress = convertToMovementAddress(addressToCheck);
-    // Also keep the short version (no 0x, no padding) if needed for some comparisons, 
-    // but usually on-chain data is full 32 bytes (64 hex chars).
-    
-    // 1. Fetch Tips from Events (Received AND Sent)
-    let onChainTips: any[] = [];
-    try {
-      // const client = getAptosClient();
-      // const eventType = `${TIPJAR_MODULE_ADDRESS}::MoveFeed::TipEvent`;
-
-      // Fetch events from the module
-      // TODO: Update to use new Aptos SDK Indexer API as getModuleEventsByEventType is deprecated
-      const events: any[] = []; 
-      /* await client.getModuleEventsByEventType({
-        eventType: eventType as `${string}::${string}::${string}`,
-      }); */
-
-      onChainTips = events
-        .filter((e: any) => {
-          // Filter where we are either the creator (receiver) or tipper (sender)
-          // Normalize event addresses to ensure consistent comparison
-          const eventCreator = convertToMovementAddress(e.data.creator);
-          const eventTipper = convertToMovementAddress(e.data.tipper);
-
-          const isReceiver = eventCreator === normalizedAddress;
-          const isSender = eventTipper === normalizedAddress;
-
-          return isReceiver || isSender;
-        })
-        .map((e: any) => {
-          const eventCreator = convertToMovementAddress(e.data.creator);
-          const isReceiver = eventCreator === normalizedAddress;
-
-          return {
-            sender: e.data.tipper,
-            receiver: e.data.creator,
-            amount: octasToMove(parseInt(e.data.amount)),
-            timestamp: parseInt(e.data.timestamp),
-            hash: e.transaction_version, // Use version as hash/ID for explorer
-            postId: e.data.post_id,
-            type: isReceiver ? 'received' : 'sent'
-          };
-        });
-
-    } catch (eventError) {
-      console.error("Error fetching tip events:", eventError);
-      // Fallback to post-based derivation if event fetching fails (only for received)
-      // Check last 100 posts for tips as a scalable fallback
-      let posts: any[] = [];
-      try {
-        const count = await getUserPostsCount(normalizedAddress);
-        const LIMIT = 100;
-        const start = Math.max(0, count - LIMIT);
-        posts = await getUserPostsPaginated(normalizedAddress, start, LIMIT);
-      } catch (err) {
-        console.error("Error fetching fallback posts for tips:", err);
-      }
-
-      const fallbackReceived = posts
-        .filter(post => post.total_tips > 0)
-        .map(post => ({
-          sender: 'Tips on Post',
-          receiver: normalizedAddress,
-          amount: octasToMove(post.total_tips),
-          timestamp: post.last_tip_timestamp || post.timestamp,
-          hash: `post-${post.id}`, // Fallback hash
-          postId: post.id.toString(),
-          type: 'received'
-        }));
-      onChainTips = fallbackReceived;
-    }
-
-    // Filter out received tips based on snapshot (for "Clear Activity" feature)
-    let filteredTips = onChainTips;
-    if (typeof window !== 'undefined') {
-      try {
-        const clearedAt = parseInt(localStorage.getItem('received_tips_cleared_at') || '0');
-        if (clearedAt > 0) {
-          filteredTips = onChainTips.filter(tip => tip.timestamp > clearedAt);
-        }
-      } catch (e) {
-        console.error("Error filtering tips", e);
-      }
-    }
-
-    // 2. Fetch Sent Tips (Server API)
-    let localSentTips: any[] = [];
-    if (addressToCheck) {
-      try {
-        const res = await fetch(`/api/tips?userAddress=${addressToCheck}`);
-        if (res.ok) {
-            const contentType = res.headers.get("content-type");
-            if (contentType && contentType.indexOf("application/json") !== -1) {
-                const serverTips = await res.json();
-                localSentTips = serverTips.map((tip: any) => ({
-                ...tip,
-                // Normalize timestamp to seconds if it's in milliseconds
-                timestamp: tip.timestamp > 100000000000 ? Math.floor(tip.timestamp / 1000) : tip.timestamp
-                }));
-            } else {
-                const text = await res.text();
-                console.warn(`API /api/tips returned non-JSON response: ${text.substring(0, 100)}...`);
-            }
-        } else {
-            // Log the error details from the server
-            const errBody = await res.text();
-            console.error(`Error reading tips from API (${res.status}):`, errBody);
-        }
-      } catch (e) {
-        console.error("Error reading tips from API", e);
-      }
-    }
-
-    // Merge and Sort
-    // Combine on-chain tips with local tips
-    const allTips = [...filteredTips, ...localSentTips];
-
-    // Deduplicate by hash/version
-    // Local tips might not have a version/hash immediately, or might conflict
-    // We prioritize on-chain tips if hashes match
-    const uniqueTipsMap = new Map();
-
-    allTips.forEach(tip => {
-      // If tip has a hash, use it as key. If not (some local tips?), use timestamp+amount
-      const key = tip.hash || `${tip.timestamp}-${tip.amount}`;
-
-      if (!uniqueTipsMap.has(key)) {
-        uniqueTipsMap.set(key, tip);
-      } else {
-        // If we already have it, prefer the one with a real hash (likely on-chain)
-        const existing = uniqueTipsMap.get(key);
-        if (!existing.hash || existing.hash.startsWith('post-')) {
-          if (tip.hash && !tip.hash.startsWith('post-')) {
-            uniqueTipsMap.set(key, tip);
-          }
-        }
-      }
-    });
-
-    return Array.from(uniqueTipsMap.values()).sort((a, b) => b.timestamp - a.timestamp);
-  } catch (error) {
-    console.error('Error fetching tip history:', error);
-    return [];
-  }
-}
 
 /**
  * Get gas price estimation from Movement Network
@@ -589,8 +398,7 @@ export async function getGasEstimation(): Promise<GasEstimation> {
     // Get gas price estimation from the network
     const gasEstimation = await client.getGasPriceEstimation();
 
-    console.log("📊 Gas estimation from network:", gasEstimation);
-
+    // Removed console.log for production - gas estimation is handled automatically
     // gas_estimate is the gas unit price (in octas per gas unit)
     const gasUnitPrice = gasEstimation.gas_estimate || DEFAULT_GAS_CONFIG.gasUnitPrice;
 
@@ -646,23 +454,19 @@ export async function getStats() {
     try {
         // Fetch Registry for total volume
         try {
-            const registry = await client.getAccountResource({
-                accountAddress: moduleAddress,
-                resourceType: `${moduleAddress}::donations_v12::Registry`
-            }) as any;
-            totalVolume = parseInt(registry.global_total || "0");
+            const registry = await safeGetAccountResource(client, moduleAddress, `${moduleAddress}::donations_v10::Registry`);
+            if (registry) {
+                totalVolume = parseInt(registry.global_total || "0");
+            }
         } catch (e) {
             // Resource might not exist yet
         }
 
         // Fetch TopTipperStats for top tipper
         try {
-            const stats = await client.getAccountResource({
-                accountAddress: moduleAddress,
-                resourceType: `${moduleAddress}::donations_v12::TopTipperStats`
-            }) as any;
+            const stats = await safeGetAccountResource(client, moduleAddress, `${moduleAddress}::donations_v10::TopTipperStats`);
             
-            if (stats.top_tipper && stats.top_tipper !== "0x0" && stats.top_tipper !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
+            if (stats && stats.top_tipper && stats.top_tipper !== "0x0" && stats.top_tipper !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
                 topTipper = stats.top_tipper;
             }
         } catch (e) {
@@ -726,13 +530,15 @@ export async function getUserTipStats(userAddress: string): Promise<{
         let totalSent = 0;
         // TopTipperStats is not available in v10 contract. 
         // We would need to query events to get this data.
+        // Note: TopTipperStats was added in v12, but we're using v10
+        // TODO: Implement event-based tracking for sent tips
         
         /* 
         const client = getAptosClient();
         try {
             const stats = await client.getAccountResource({
                 accountAddress: minesAddress,
-                resourceType: `${minesAddress}::donations_v12::TopTipperStats`
+                resourceType: `${minesAddress}::donations_v10::TopTipperStats`
             }) as any;
 
             if (stats && stats.sent_counts && stats.sent_counts.handle) {
@@ -763,5 +569,21 @@ export async function getUserTipStats(userAddress: string): Promise<{
     } catch (error: any) {
         console.error("Error fetching user tip stats:", error);
         return { totalSent: 0, totalReceived: 0, tipsSentCount: 0 };
+    }
+}
+
+/**
+ * Safely get an account resource without triggering 404 console errors
+ * Uses getAccountResources (plural) to fetch all resources and filter locally
+ */
+export async function safeGetAccountResource(client: Aptos, accountAddress: string, resourceType: string): Promise<any> {
+    try {
+        const resources = await client.getAccountResources({ accountAddress });
+        const resource = resources.find((r: any) => r.type === resourceType);
+        return resource ? resource.data : null;
+    } catch (error: any) {
+        // If account doesn't exist (404), return null silently
+        if (error?.status === 404 || error?.message?.includes("not found")) return null;
+        throw error;
     }
 }

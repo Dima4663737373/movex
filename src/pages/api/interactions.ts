@@ -74,7 +74,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
         } catch (error: any) {
             console.error(`Error fetching ${type}:`, error);
-            return res.status(500).json({ error: error.message });
+            // Fail soft: return empty lists to avoid breaking UI
+            if (type === 'mutes') return res.status(200).json({ mutes: [] });
+            if (type === 'blocks') return res.status(200).json({ blocks: [] });
+            if (type === 'not_interested') return res.status(200).json({ not_interested: [] });
+            return res.status(200).json({});
         }
     }
 

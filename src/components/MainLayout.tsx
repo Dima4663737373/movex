@@ -42,6 +42,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     const [rsProfiles, setRsProfiles] = useState<Record<string, any>>({});
 
     const isChatPage = router.pathname === '/chat';
+    const isSavedPage = router.pathname.includes('/saved');
+    const isFullHeightPage = false;
+    const isChatOrSaved = isChatPage || isSavedPage;
+
     const isLaunchpadPage = router.pathname.includes('/launchpad');
     const hideRightSidebar = isChatPage || isLaunchpadPage;
 
@@ -53,8 +57,24 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         const fetchProfile = async () => {
             if (currentUserAddress) {
                 try {
-                    const name = await getDisplayName(currentUserAddress);
+                    let name = await getDisplayName(currentUserAddress);
                     const ava = await getAvatar(currentUserAddress);
+
+                    // Fallback to off-chain name if on-chain is missing or default
+                    if (!name || name === "Anonymous User") {
+                        try {
+                            const res = await fetch(`/api/profile?address=${currentUserAddress}`);
+                            if (res.ok) {
+                                const data = await res.json();
+                                if (data.name) {
+                                    name = data.name;
+                                }
+                            }
+                        } catch (err) {
+                            console.error("Error fetching off-chain profile", err);
+                        }
+                    }
+
                     setDisplayName(name);
                     setAvatar(ava);
                 } catch (e) {
@@ -101,9 +121,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     }, [currentUserAddress]);
 
     return (
-        <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans">
+        <div className={`bg-[var(--bg-primary)] text-[var(--text-primary)] font-sans ${isFullHeightPage ? 'h-screen overflow-hidden flex flex-col' : 'min-h-screen'}`}>
              {/* Header - Movement Labs Style */}
-             <header className="border-b border-[var(--card-border)] bg-[var(--card-bg)] sticky top-0 z-40 transition-colors duration-300">
+             <header className={`border-b border-[var(--card-border)] bg-[var(--card-bg)] z-40 transition-colors duration-300 ${isFullHeightPage ? 'flex-none' : 'sticky top-0'}`}>
                 <div className="container-custom py-6">
                     <div className="max-w-[1280px] mx-auto flex items-center justify-between">
                         <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push('/feed')}>
@@ -121,10 +141,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                 </div>
             </header>
 
-             <main className="container-custom pb-6 md:pb-10">
-                <div className="max-w-[1280px] mx-auto flex items-stretch gap-0">
+             <main className={`container-custom ${isFullHeightPage ? 'flex-1 overflow-hidden pb-0' : isChatOrSaved ? 'pb-0' : 'pb-6 md:pb-10'}`}>
+                <div className={`max-w-[1280px] mx-auto flex items-stretch gap-0 ${isFullHeightPage ? 'h-full' : ''}`}>
                     {/* Sidebar Container - Persistent & Animated */}
-                    <div className={`hidden lg:block pt-6 sticky top-[89px] h-[calc(100vh-89px)] shrink-0 transition-all duration-300 ease-in-out border-r border-[var(--card-border)] bg-[var(--bg-primary)] z-30 ${sidebarWidthClass}`}>
+                    <div className={`hidden lg:block pt-6 transition-all duration-300 ease-in-out border-r border-[var(--card-border)] bg-[var(--bg-primary)] z-30 ${sidebarWidthClass} ${isFullHeightPage ? 'h-full overflow-y-auto' : 'sticky top-[89px] h-[calc(100vh-89px)] shrink-0'}`}>
                         <LeftSidebar 
                             activePage={activePage} 
                             currentUserAddress={currentUserAddress} 
@@ -135,13 +155,13 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                     </div>
 
                     {/* Content Container */}
-                    <div className="flex-1 min-w-0 border-r border-[var(--card-border)] relative z-0">
+                    <div className={`flex-1 min-w-0 border-r border-[var(--card-border)] relative z-0 ${isFullHeightPage ? 'h-full overflow-hidden' : ''}`}>
                         {children}
                     </div>
 
                     {/* Right Sidebar - Persistent */}
                     {!hideRightSidebar && (
-                        <div className="hidden lg:block w-[350px] shrink-0 pt-6 pl-6 sticky top-[89px] h-[calc(100vh-89px)] overflow-y-auto hide-scrollbar bg-[var(--bg-primary)] z-30">
+                        <div className={`hidden lg:block w-[350px] shrink-0 pt-6 pl-6 bg-[var(--bg-primary)] z-30 ${isFullHeightPage ? 'h-full overflow-y-auto' : 'sticky top-[89px] h-[calc(100vh-89px)] overflow-y-auto hide-scrollbar'}`}>
                             <RightSidebar 
                                 posts={rsPosts} 
                                 stats={rsStats} 
