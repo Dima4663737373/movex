@@ -86,8 +86,23 @@ export default function ExplorePage() {
             // Load current user profile
             if (userAddress) {
                 try {
-                    const name = await getDisplayName(userAddress);
+                    let name = await getDisplayName(userAddress);
                     const userAvatar = await getAvatar(userAddress);
+
+                    if (!name || name === "Anonymous User") {
+                        try {
+                            const res = await fetch(`/api/profile?address=${userAddress}`);
+                            if (res.ok) {
+                                const data = await res.json();
+                                if (data.name) {
+                                    name = data.name;
+                                }
+                            }
+                        } catch (err) {
+                            console.error("Error fetching off-chain profile", err);
+                        }
+                    }
+
                     setMyDisplayName(name);
                     setMyAvatar(userAvatar);
                 } catch (err) {

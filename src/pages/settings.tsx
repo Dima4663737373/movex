@@ -110,7 +110,7 @@ export default function SettingsPage() {
                     .from('user_settings')
                     .select('*')
                     .eq('user_address', account.address.toString())
-                    .single()
+                    .maybeSingle()
                     .then(({ data, error }) => {
                         if (data) {
                             if (data.language === 'en' || data.language === 'ua') {

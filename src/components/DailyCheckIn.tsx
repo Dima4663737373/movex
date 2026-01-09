@@ -52,12 +52,12 @@ export function DailyCheckIn() {
         
         try {
             const client = getAptosClient();
-            const data = await safeGetAccountResource(client, account.address, `${minesAddress}::${moduleName}::CheckInState`);
+            const data = await safeGetAccountResource(client, account.address.toString(), `${minesAddress}::${moduleName}::CheckInState`);
             
             if (!data) {
                  // User hasn't checked in yet, this is normal
                  // No red log needed, safeGetAccountResource handled it
-                 console.log("No check-in history found (first time user).");
+                 // console.log("No check-in history found (first time user).");
                  setStreak(0);
                  setCanCheckIn(true);
                  return;

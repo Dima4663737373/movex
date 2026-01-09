@@ -98,24 +98,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
         const updates: any = {
             wallet_address: wallet_address.toLowerCase(),
-            // display_name, // Removed due to schema mismatch error (column missing)
+            display_name,
+            name,
             bio,
             website,
             location,
             banner_url,
-            // joined_date_visibility, // Removed due to schema mismatch error
+            joined_date_visibility,
             updated_at: new Date().toISOString()
         };
-
-        // Only add display_name if it's not null/undefined, but we commented it out to fix 500 error
-        // If the column is added later, we can uncomment it.
-        // Or we can try to conditionally add it if we knew the schema.
-
 
         const { data, error } = await supabaseAdmin
             .from('profiles')
             .upsert(updates)
-            .select('wallet_address, bio, website, location, banner_url, created_at, updated_at')
+            .select('wallet_address, display_name, name, bio, website, location, banner_url, joined_date_visibility, created_at, updated_at')
             .single();
 
         if (error) {

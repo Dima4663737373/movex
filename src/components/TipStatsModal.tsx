@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getTipHistory } from '@/lib/movementClient';
+import { getTipHistory } from '@/lib/microThreadsClient';
 import { octasToMove } from '@/lib/movement';
 
 interface TipStats {

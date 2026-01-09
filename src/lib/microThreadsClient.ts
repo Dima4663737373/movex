@@ -6,8 +6,8 @@
 
 import { Aptos, AptosConfig, Network } from "@aptos-labs/ts-sdk";
 import { InputTransactionData } from "@aptos-labs/wallet-adapter-react";
-import { getCurrentNetworkConfig, getModuleAddress, convertToMovementAddress, isValidMovementAddress } from "./movement";
-import { getGasEstimation, safeGetAccountResource } from "./movementClient"; // Keep for future use or remove if strict
+import { getCurrentNetworkConfig, getModuleAddress, convertToMovementAddress, isValidMovementAddress, octasToMove, TIPJAR_MODULE_ADDRESS } from "./movement";
+import { getGasEstimation, safeGetAccountResource, getAptosClient } from "./movementClient"; // Keep for future use or remove if strict
 
 export interface OnChainPost {
     id: number;
@@ -96,12 +96,17 @@ const getString = (val: any): string => {
 // Helper to check for 404 / Not Found errors from Aptos SDK or Proxy
 const isNotFound = (error: any): boolean => {
     if (!error) return false;
+    // Check for various forms of "not found" errors
+    const msg = error.message || error.toString() || "";
     return (
         error.status === 404 || 
-        error.message?.includes("resource_not_found") || 
+        msg.includes("resource_not_found") || 
         error.error_code === "resource_not_found" ||
-        error.message?.includes("Not Found") || // Generic 404 message
-        (error.message?.includes("module_not_found"))
+        msg.includes("account_not_found") || 
+        error.error_code === "account_not_found" || 
+        msg.includes("Account not found") || 
+        msg.includes("Not Found") || 
+        msg.includes("module_not_found")
     );
 };
 
@@ -468,7 +473,7 @@ export async function getGlobalPosts(page: number = 0, limit: number = 10): Prom
     try {
         const client = getClient();
         const feed = await safeGetAccountResource(client, MODULE_ADDRESS, `${MODULE_ADDRESS}::move_feed_v13::GlobalFeed`);
-        if (!feed) return 0;
+        if (!feed) return [];
 
         const allPosts = feed.posts as any[];
         
@@ -830,10 +835,15 @@ export async function getProfile(address: string): Promise<ProfileData | null> {
 
     try {
         const client = getClient();
-        const profile = await client.getAccountResource({
-            accountAddress: normalizedAddress,
-            resourceType: `${MODULE_ADDRESS}::move_feed_v13::Profile`
-        }) as any;
+        const profile = await safeGetAccountResource(client, normalizedAddress, `${MODULE_ADDRESS}::move_feed_v13::Profile`);
+
+        if (!profile) {
+            // Profile not found - cache it
+            const existing = profileCache.get(cacheKey) || { timestamp: Date.now() };
+            existing.profile = null;
+            profileCache.set(cacheKey, existing);
+            return null;
+        }
 
         const profileData = {
             name: getString(profile.name),
@@ -869,7 +879,8 @@ export async function setProfile(
     displayName: string,
     bio: string,
     avatarUrl: string,
-    signAndSubmitTransaction: (transaction: InputTransactionData) => Promise<any>
+    signAndSubmitTransaction: (transaction: InputTransactionData) => Promise<any>,
+    userAddress: string
 ): Promise<void> {
     const MODULE_ADDRESS = getModuleAddress();
     if (!MODULE_ADDRESS) throw new Error("Mainnet contract address not configured. Please deploy the contract and update src/lib/movement.ts");
@@ -887,12 +898,14 @@ export async function setProfile(
         await client.waitForTransaction({ transactionHash: response.hash });
         
         // Invalidate cache after profile update
-        const normalizedAddress = convertToMovementAddress(address);
+        const normalizedAddress = convertToMovementAddress(userAddress);
         profileCache.delete(`profile_${normalizedAddress}`);
         profileCache.delete(`name_${normalizedAddress}`);
         profileCache.delete(`avatar_${normalizedAddress}`);
-    } catch (error) {
-        console.error("Error setting profile:", error);
+    } catch (error: any) {
+        if (!isNotFound(error)) {
+            console.error("Error setting profile:", error);
+        }
         throw error;
     }
 }
@@ -1026,10 +1039,15 @@ export async function getAvatar(userAddress: string): Promise<string> {
 
     try {
         const client = getClient();
-        const profile = await client.getAccountResource({
-            accountAddress: normalizedAddress,
-            resourceType: `${MODULE_ADDRESS}::move_feed_v13::Profile`
-        }) as any;
+        const profile = await safeGetAccountResource(client, normalizedAddress, `${MODULE_ADDRESS}::move_feed_v13::Profile`);
+
+        if (!profile) {
+             // Cache the "not found" result to avoid repeated requests
+             const existing = profileCache.get(cacheKey) || { timestamp: Date.now() };
+             existing.avatar = "";
+             profileCache.set(cacheKey, existing);
+             return `https://api.dicebear.com/7.x/identicon/svg?seed=${userAddress}`;
+        }
 
         const avatarUrl = getString(profile.avatar_url);
 
@@ -1069,4 +1087,172 @@ export function clearProfileCache(address?: string): void {
         // Clear all cache
         profileCache.clear();
     }
+}
+
+/**
+ * Fetch tip history for a specific address
+ * 
+ * - Received tips: Fetched from TipEvent events on-chain (includes real tx hash)
+ * - Sent tips: Fetched from local storage (private, only visible to owner)
+ */
+export async function getTipHistory(targetAddress?: string) {
+  try {
+    // Determine address to fetch for
+    let addressToCheck = targetAddress;
+    let currentUserAddress = '';
+
+    if (typeof window !== 'undefined') {
+      currentUserAddress = localStorage.getItem('movement_last_connected_address') || '';
+      if (!addressToCheck) {
+        addressToCheck = currentUserAddress;
+      }
+    }
+
+    if (!addressToCheck) {
+      return [];
+    }
+
+    // Normalize address to Movement format (32 bytes) for consistent matching
+    const normalizedAddress = convertToMovementAddress(addressToCheck);
+    
+    // 1. Fetch Tips from Events (Received AND Sent)
+    let onChainTips: any[] = [];
+    try {
+      // const client = getAptosClient();
+      // const eventType = `${TIPJAR_MODULE_ADDRESS}::MoveFeed::TipEvent`;
+
+      // Fetch events from the module
+      // TODO: Update to use new Aptos SDK Indexer API as getModuleEventsByEventType is deprecated
+      const events: any[] = []; 
+      /* await client.getModuleEventsByEventType({
+        eventType: eventType as `${string}::${string}::${string}`,
+      }); */
+
+      onChainTips = events
+        .filter((e: any) => {
+          // Filter where we are either the creator (receiver) or tipper (sender)
+          // Normalize event addresses to ensure consistent comparison
+          const eventCreator = convertToMovementAddress(e.data.creator);
+          const eventTipper = convertToMovementAddress(e.data.tipper);
+
+          const isReceiver = eventCreator === normalizedAddress;
+          const isSender = eventTipper === normalizedAddress;
+
+          return isReceiver || isSender;
+        })
+        .map((e: any) => {
+          const eventCreator = convertToMovementAddress(e.data.creator);
+          const isReceiver = eventCreator === normalizedAddress;
+
+          return {
+            sender: e.data.tipper,
+            receiver: e.data.creator,
+            amount: octasToMove(parseInt(e.data.amount)),
+            timestamp: parseInt(e.data.timestamp),
+            hash: e.transaction_version, // Use version as hash/ID for explorer
+            postId: e.data.post_id,
+            type: isReceiver ? 'received' : 'sent'
+          };
+        });
+
+    } catch (eventError) {
+      console.error("Error fetching tip events:", eventError);
+      // Fallback to post-based derivation if event fetching fails (only for received)
+      // Check last 100 posts for tips as a scalable fallback
+      let posts: any[] = [];
+      try {
+        const count = await getUserPostsCount(normalizedAddress);
+        const LIMIT = 100;
+        const start = Math.max(0, count - LIMIT);
+        posts = await getUserPostsPaginated(normalizedAddress, start, LIMIT);
+      } catch (err) {
+        console.error("Error fetching fallback posts for tips:", err);
+      }
+
+      const fallbackReceived = posts
+        .filter(post => post.total_tips > 0)
+        .map(post => ({
+          sender: 'Tips on Post',
+          receiver: normalizedAddress,
+          amount: octasToMove(post.total_tips),
+          timestamp: post.last_tip_timestamp || post.timestamp,
+          hash: `post-${post.id}`, // Fallback hash
+          postId: post.id.toString(),
+          type: 'received'
+        }));
+      onChainTips = fallbackReceived;
+    }
+
+    // Filter out received tips based on snapshot (for "Clear Activity" feature)
+    let filteredTips = onChainTips;
+    if (typeof window !== 'undefined') {
+      try {
+        const clearedAt = parseInt(localStorage.getItem('received_tips_cleared_at') || '0');
+        if (clearedAt > 0) {
+          filteredTips = onChainTips.filter(tip => tip.timestamp > clearedAt);
+        }
+      } catch (e) {
+        console.error("Error filtering tips", e);
+      }
+    }
+
+    // 2. Fetch Sent Tips (Server API)
+    let localSentTips: any[] = [];
+    if (addressToCheck) {
+      try {
+        const res = await fetch(`/api/tips?userAddress=${addressToCheck}`);
+        if (res.ok) {
+            const contentType = res.headers.get("content-type");
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                const serverTips = await res.json();
+                localSentTips = serverTips.map((tip: any) => ({
+                ...tip,
+                // Normalize timestamp to seconds if it's in milliseconds
+                timestamp: tip.timestamp > 100000000000 ? Math.floor(tip.timestamp / 1000) : tip.timestamp
+                }));
+            } else {
+                const text = await res.text();
+                console.warn(`API /api/tips returned non-JSON response: ${text.substring(0, 100)}...`);
+            }
+        } else {
+            // Log the error details from the server
+            const errBody = await res.text();
+            console.error(`Error reading tips from API (${res.status}):`, errBody);
+        }
+      } catch (e) {
+        console.error("Error reading tips from API", e);
+      }
+    }
+
+    // Merge and Sort
+    // Combine on-chain tips with local tips
+    const allTips = [...filteredTips, ...localSentTips];
+
+    // Deduplicate by hash/version
+    // Local tips might not have a version/hash immediately, or might conflict
+    // We prioritize on-chain tips if hashes match
+    const uniqueTipsMap = new Map();
+
+    allTips.forEach(tip => {
+      // If tip has a hash, use it as key. If not (some local tips?), use timestamp+amount
+      const key = tip.hash || `${tip.timestamp}-${tip.amount}`;
+
+      if (!uniqueTipsMap.has(key)) {
+        uniqueTipsMap.set(key, tip);
+      } else {
+        // If we already have it, prefer the one with a real hash (likely on-chain)
+        const existing = uniqueTipsMap.get(key);
+        if (!existing.hash || existing.hash.startsWith('post-')) {
+          if (tip.hash && !tip.hash.startsWith('post-')) {
+            uniqueTipsMap.set(key, tip);
+          }
+        }
+      }
+    });
+
+    return Array.from(uniqueTipsMap.values()).sort((a, b) => b.timestamp - a.timestamp);
+  } catch (error) {
+    console.error('Error fetching tip history:', error);
+    return [];
+  }
 }

@@ -43,7 +43,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
     const isChatPage = router.pathname === '/chat';
     const isSavedPage = router.pathname.includes('/saved');
-    const isFullHeightPage = isChatPage || isSavedPage;
+    const isFullHeightPage = false;
+    const isChatOrSaved = isChatPage || isSavedPage;
 
     const isLaunchpadPage = router.pathname.includes('/launchpad');
     const hideRightSidebar = isChatPage || isLaunchpadPage;
@@ -56,8 +57,24 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         const fetchProfile = async () => {
             if (currentUserAddress) {
                 try {
-                    const name = await getDisplayName(currentUserAddress);
+                    let name = await getDisplayName(currentUserAddress);
                     const ava = await getAvatar(currentUserAddress);
+
+                    // Fallback to off-chain name if on-chain is missing or default
+                    if (!name || name === "Anonymous User") {
+                        try {
+                            const res = await fetch(`/api/profile?address=${currentUserAddress}`);
+                            if (res.ok) {
+                                const data = await res.json();
+                                if (data.name) {
+                                    name = data.name;
+                                }
+                            }
+                        } catch (err) {
+                            console.error("Error fetching off-chain profile", err);
+                        }
+                    }
+
                     setDisplayName(name);
                     setAvatar(ava);
                 } catch (e) {
@@ -124,7 +141,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                 </div>
             </header>
 
-             <main className={`container-custom ${isFullHeightPage ? 'flex-1 overflow-hidden pb-0' : 'pb-6 md:pb-10'}`}>
+             <main className={`container-custom ${isFullHeightPage ? 'flex-1 overflow-hidden pb-0' : isChatOrSaved ? 'pb-0' : 'pb-6 md:pb-10'}`}>
                 <div className={`max-w-[1280px] mx-auto flex items-stretch gap-0 ${isFullHeightPage ? 'h-full' : ''}`}>
                     {/* Sidebar Container - Persistent & Animated */}
                     <div className={`hidden lg:block pt-6 transition-all duration-300 ease-in-out border-r border-[var(--card-border)] bg-[var(--bg-primary)] z-30 ${sidebarWidthClass} ${isFullHeightPage ? 'h-full overflow-y-auto' : 'sticky top-[89px] h-[calc(100vh-89px)] shrink-0'}`}>

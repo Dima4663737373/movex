@@ -13,6 +13,8 @@ interface Translations {
     settings: string;
     profile: string;
     post: string;
+    drafts: string;
+    scheduled: string;
     
     // Settings
     notifications: string;
@@ -278,6 +280,8 @@ const translations: Record<Language, Translations> = {
         settings: 'Settings',
         profile: 'Profile',
         post: 'Post',
+        drafts: 'Drafts',
+        scheduled: 'Scheduled',
         
         notifications: 'Notifications',
         pushNotifications: 'Push Notifications',
@@ -528,6 +532,8 @@ const translations: Record<Language, Translations> = {
         settings: 'Налаштування',
         profile: 'Профіль',
         post: 'Опублікувати',
+        drafts: 'Чорновики',
+        scheduled: 'Заплановані',
         
         notifications: 'Сповіщення',
         pushNotifications: 'Push-сповіщення',

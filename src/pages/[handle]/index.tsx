@@ -4,8 +4,8 @@ import { useWallet } from '@aptos-labs/wallet-adapter-react';
 import { Hex } from "@aptos-labs/ts-sdk";
 import Link from 'next/link';
 import { formatMovementAddress, octasToMove, convertToMovementAddress } from '@/lib/movement';
-import { getDisplayName, setDisplayName, getUserTipStats, getAvatar, setAvatar, setProfile, getUserPostsPaginated, getUserPostsCount, OnChainPost, getGlobalPostsCount, getGlobalPosts } from '@/lib/microThreadsClient';
-import { getTipHistory, getStats, getUserBadges } from '@/lib/movementClient';
+import { getDisplayName, setDisplayName, getUserTipStats, getAvatar, setAvatar, setProfile, getUserPostsPaginated, getUserPostsCount, OnChainPost, getGlobalPostsCount, getGlobalPosts, getTipHistory } from '@/lib/microThreadsClient';
+import { getStats, getUserBadges } from '@/lib/movementClient';
 import TipHistory from '@/components/TipHistory';
 import PostCard from '@/components/PostCard';
 import Head from 'next/head';
@@ -37,6 +37,7 @@ export default function CreatorPage() {
 
     // Profile Data
     const [displayName, setDisplayNameState] = useState<string>('');
+    const [username, setUsername] = useState<string>('');
     const [avatarUrl, setAvatarUrl] = useState<string>('');
     const [bio, setBio] = useState('');
     const [website, setWebsite] = useState('');
@@ -51,6 +52,7 @@ export default function CreatorPage() {
     
     // Edit State
     const [editName, setEditName] = useState('');
+    const [editUsername, setEditUsername] = useState('');
     const [editAvatar, setEditAvatar] = useState('');
     const [editBio, setEditBio] = useState('');
     const [editWebsite, setEditWebsite] = useState('');
@@ -162,6 +164,11 @@ export default function CreatorPage() {
                             setWebsite(data.website || '');
                             setLocation(data.location || '');
                             setBannerUrl(data.banner_url || '');
+                            setUsername(data.display_name || '');
+                            // If on-chain name is missing/anonymous, use Supabase name
+                            if ((!name || name === "Anonymous User") && data.name) {
+                                setDisplayNameState(data.name);
+                            }
                             setJoinedDate(data.created_at || null);
                             setJoinedDateVisibility(data.joined_date_visibility || 'public');
                         }
@@ -276,13 +283,16 @@ export default function CreatorPage() {
 
     useEffect(() => {
         const checkAvailability = async () => {
-            if (!editName || editName.trim() === displayName) {
+            // Check username availability (Supabase)
+            if (!editUsername || editUsername.trim() === username) {
                 setUsernameError(null);
                 return;
             }
             
             try {
-                const res = await fetch(`/api/check-username?username=${encodeURIComponent(editName.trim())}&currentAddress=${address}`);
+                // We use check-username API which queries Supabase display_name
+                // So here we pass editUsername as the 'username' param
+                const res = await fetch(`/api/check-username?username=${encodeURIComponent(editUsername.trim())}&currentAddress=${address}`);
                 const data = await res.json();
                 if (data.isTaken) {
                     setUsernameError(t.usernameTaken || "Username is already taken");
@@ -296,19 +306,21 @@ export default function CreatorPage() {
 
         const timeoutId = setTimeout(checkAvailability, 500);
         return () => clearTimeout(timeoutId);
-    }, [editName, displayName, address, t]);
+    }, [editUsername, username, address, t]);
 
     useEffect(() => {
         if (displayName) setEditName(displayName);
+        if (username) setEditUsername(username);
         if (avatarUrl) setEditAvatar(avatarUrl);
         setEditBio(bio);
         setEditWebsite(website);
         setEditLocation(location);
         setEditBanner(bannerUrl);
         setEditJoinedDateVisibility(joinedDateVisibility);
-    }, [displayName, avatarUrl, bio, website, location, bannerUrl, joinedDateVisibility]);
+    }, [displayName, username, avatarUrl, bio, website, location, bannerUrl, joinedDateVisibility]);
 
     const handleSaveProfile = async () => {
+        if (!account) return;
         try {
             setSaving(true);
 
@@ -320,18 +332,37 @@ export default function CreatorPage() {
             const locationChanged = editLocation.trim() !== location;
             const bannerChanged = editBanner.trim() !== bannerUrl;
             const visibilityChanged = editJoinedDateVisibility !== joinedDateVisibility;
+            const usernameChanged = editUsername.trim() !== username;
 
-            if (!nameChanged && !avatarChanged && !bioChanged && !websiteChanged && !locationChanged && !bannerChanged && !visibilityChanged) {
+            if (!nameChanged && !avatarChanged && !bioChanged && !websiteChanged && !locationChanged && !bannerChanged && !visibilityChanged && !usernameChanged) {
                 setIsEditing(false);
                 setSaving(false);
                 return;
             }
 
+            if (usernameError) {
+                addNotification("Please fix username error", "error");
+                setSaving(false);
+                return;
+            }
+
             if (nameChanged || avatarChanged || bioChanged) {
-                await setProfile(editName, editBio, editAvatar, signAndSubmitTransaction);
-                if (nameChanged) setDisplayNameState(editName);
-                if (avatarChanged) setAvatarUrl(editAvatar);
-                if (bioChanged) setBio(editBio);
+                try {
+                    await setProfile(editName, editBio, editAvatar, signAndSubmitTransaction, account.address.toString());
+                    if (nameChanged) setDisplayNameState(editName);
+                    if (avatarChanged) setAvatarUrl(editAvatar);
+                    if (bioChanged) setBio(editBio);
+                } catch (err: any) {
+                    const errMsg = err?.message || String(err);
+                    // Handle account not found error gracefully (new users)
+                    if (errMsg.includes('account_not_found') || errMsg.includes('Account not found')) {
+                        console.warn("On-chain profile update skipped: Account not initialized.");
+                        addNotification("Profile saved locally only. Fund account to update on-chain.", "info", { persist: true });
+                        // Proceed to off-chain update without throwing
+                    } else {
+                        throw err; // Re-throw other errors
+                    }
+                }
             }
 
             // Update extended profile in Supabase
@@ -391,7 +422,7 @@ export default function CreatorPage() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         wallet_address: address,
-                        display_name: editName,
+                        display_name: editUsername, // Use Supabase display_name as Username
                         bio: editBio,
                         website: editWebsite,
                         location: editLocation,
@@ -409,6 +440,7 @@ export default function CreatorPage() {
                     setWebsite(data.website);
                     setLocation(data.location);
                     setBannerUrl(data.banner_url);
+                    setUsername(data.display_name); // Update username from response
                     // Use local state if DB doesn't return it (graceful degradation for missing columns)
                     setJoinedDateVisibility(data.joined_date_visibility || editJoinedDateVisibility);
                 } else {
@@ -600,34 +632,74 @@ export default function CreatorPage() {
         return (
             <>
                 <Head>
-                    <title>Loading... - MoveFeed</title>
+                    <title>Loading... - MoveX</title>
                 </Head>
 
-                <div className="pt-6 lg:px-6">
-                    <div className="space-y-8 min-w-0">
-                        {/* Profile Header Card Skeleton */}
-                        <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl overflow-hidden relative h-[450px] animate-pulse">
-                            <div className="h-48 bg-[var(--card-border)] w-full"></div>
-                            <div className="absolute top-36 left-6 w-32 h-32 rounded-full bg-[var(--card-border)] border-4 border-[var(--card-bg)]"></div>
-                            <div className="mt-16 px-6 space-y-4">
-                                <div className="h-8 w-48 bg-[var(--card-border)] rounded"></div>
-                                <div className="h-4 w-32 bg-[var(--card-border)] rounded"></div>
-                                <div className="flex gap-4 pt-2">
-                                    <div className="h-10 w-24 bg-[var(--card-border)] rounded-lg"></div>
-                                    <div className="h-10 w-24 bg-[var(--card-border)] rounded-lg"></div>
+                <div className="min-h-screen bg-[var(--bg-primary)]">
+                    {/* Profile Header Skeleton */}
+                    <div className="pt-6 px-4 lg:px-6 pb-6">
+                        <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl overflow-hidden relative animate-pulse">
+                            {/* Banner */}
+                            <div className="h-48 w-full bg-[var(--card-border)]"></div>
+                            
+                            <div className="px-8 pb-8">
+                                <div className="flex justify-between items-end -mt-16 mb-6">
+                                    {/* Avatar */}
+                                    <div className="relative">
+                                        <div className="w-32 h-32 rounded-full bg-[var(--card-bg)] p-1">
+                                            <div className="w-full h-full rounded-full bg-[var(--card-border)]"></div>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Action Button */}
+                                    <div className="h-10 w-32 bg-[var(--card-border)] rounded-full mb-2"></div>
+                                </div>
+
+                                {/* Info */}
+                                <div className="space-y-4 mb-6">
+                                    <div className="h-8 w-64 bg-[var(--card-border)] rounded"></div>
+                                    <div className="h-4 w-40 bg-[var(--card-border)] rounded"></div>
+                                    <div className="h-16 w-full max-w-lg bg-[var(--card-border)] rounded"></div>
+                                    
+                                    {/* Meta */}
+                                    <div className="flex gap-4">
+                                        <div className="h-4 w-24 bg-[var(--card-border)] rounded"></div>
+                                        <div className="h-4 w-32 bg-[var(--card-border)] rounded"></div>
+                                    </div>
+                                    
+                                    {/* Stats */}
+                                    <div className="flex gap-8 pt-4 border-t border-[var(--card-border)]">
+                                        <div className="h-6 w-20 bg-[var(--card-border)] rounded"></div>
+                                        <div className="h-6 w-24 bg-[var(--card-border)] rounded"></div>
+                                        <div className="h-6 w-24 bg-[var(--card-border)] rounded"></div>
+                                    </div>
                                 </div>
                             </div>
+                            
+                            {/* Tabs */}
+                            <div className="flex gap-8 px-8 border-t border-[var(--card-border)]">
+                                <div className="h-14 w-16 border-b-2 border-[var(--card-border)] mt-[-2px]"></div>
+                                <div className="h-14 w-24 mt-[-2px]"></div>
+                                <div className="h-14 w-20 mt-[-2px]"></div>
+                            </div>
                         </div>
+                    </div>
 
-                        {/* Posts Skeleton */}
-                        <div className="space-y-4">
-                            {[1, 2, 3].map(i => (
-                                <div key={i} className="bg-[var(--card-bg)] border border-[var(--card-border)] p-4 rounded-xl animate-pulse h-48">
-                                    <div className="flex gap-4">
-                                        <div className="w-12 h-12 rounded-full bg-[var(--card-border)]"></div>
+                    {/* Posts Skeleton */}
+                    <div className="px-0 lg:px-6 pb-20">
+                        <div className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-xl overflow-hidden">
+                            {[1, 2, 3, 4].map(i => (
+                                <div key={i} className="p-4 border-b border-[var(--card-border)] animate-pulse">
+                                    <div className="flex gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-[var(--card-border)]"></div>
                                         <div className="flex-1 space-y-3">
-                                            <div className="h-4 w-1/3 bg-[var(--card-border)] rounded"></div>
-                                            <div className="h-16 w-full bg-[var(--card-border)] rounded"></div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="h-4 w-32 bg-[var(--card-border)] rounded"></div>
+                                                <div className="h-4 w-20 bg-[var(--card-border)] rounded"></div>
+                                            </div>
+                                            <div className="h-4 w-full bg-[var(--card-border)] rounded"></div>
+                                            <div className="h-4 w-3/4 bg-[var(--card-border)] rounded"></div>
+                                            <div className="h-48 w-full bg-[var(--card-border)] rounded-xl mt-2"></div>
                                         </div>
                                     </div>
                                 </div>
@@ -876,25 +948,49 @@ export default function CreatorPage() {
                                     <div className="mb-6">
                                         {isEditing ? (
                                             <div>
+                                                <label className="block text-sm text-[var(--text-secondary)] mb-1">Display Name</label>
                                                 <input
                                                     type="text"
                                                     value={editName}
                                                     onChange={(e) => setEditName(e.target.value)}
-                                                    className={`text-3xl font-bold bg-[var(--input-bg)] border ${usernameError ? 'border-red-500' : 'border-[var(--input-border)]'} rounded-lg px-2 py-1 text-[var(--text-primary)] w-full max-w-md mb-1 focus:outline-none focus:border-[var(--accent)]`}
+                                                    className="text-3xl font-bold bg-[var(--input-bg)] border border-[var(--input-border)] rounded-lg px-2 py-1 text-[var(--text-primary)] w-full max-w-md mb-2 focus:outline-none focus:border-[var(--accent)]"
                                                     placeholder={t.displayNamePlaceholder}
                                                 />
+                                                
+                                                <label className="block text-sm text-[var(--text-secondary)] mb-1">Username (@handle)</label>
+                                                <div className="relative max-w-md mb-1">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] font-bold">@</span>
+                                                    <input
+                                                        type="text"
+                                                        value={editUsername}
+                                                        onChange={(e) => setEditUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                                                        className={`pl-8 text-xl font-bold bg-[var(--input-bg)] border ${usernameError ? 'border-red-500' : 'border-[var(--input-border)]'} rounded-lg py-1 pr-2 text-[var(--text-primary)] w-full focus:outline-none focus:border-[var(--accent)]`}
+                                                        placeholder="username"
+                                                    />
+                                                </div>
                                                 {usernameError && (
                                                     <p className="text-red-500 text-sm mt-1">{usernameError}</p>
                                                 )}
                                             </div>
                                         ) : (
-                                            <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-1">{displayName || "Anonymous User"}</h1>
+                                            <>
+                                                <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-1">{displayName || "Anonymous User"}</h1>
+                                                {username && (
+                                                    <div className="text-[var(--text-secondary)] text-xl font-medium mb-1">
+                                                        @{username}
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
-                                        <div className="text-[var(--text-secondary)] font-mono flex items-center gap-2 mb-4">
+                                        <div className="text-[var(--text-secondary)] font-mono flex items-center gap-2 mb-4 text-sm mt-2">
+                                            <span className="opacity-50">Wallet:</span>
                                             {formatMovementAddress(address)}
                                             <button
-                                                onClick={() => navigator.clipboard.writeText(address)}
-                                                className="hover:text-[var(--accent)] transition-colors"
+                                                onClick={() => {
+                                                    navigator.clipboard.writeText(address);
+                                                    addNotification("Address copied", "success", { persist: false, duration: 1500 });
+                                                }}
+                                                className="hover:text-[var(--accent)] transition-colors p-1"
                                                 title={t.copyAddress}
                                             >
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -7,7 +7,7 @@ export default function SavedMessagesPage() {
             <Head>
                 <title>Saved Messages - MoveX</title>
             </Head>
-            <div className="h-full">
+            <div>
                 <SavedMessagesView />
             </div>
         </>

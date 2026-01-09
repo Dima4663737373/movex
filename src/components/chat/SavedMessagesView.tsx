@@ -1,11 +1,14 @@
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { useState, useEffect, useRef } from "react";
-import { getDisplayName, getAvatar } from "@/lib/microThreadsClient";
+import { getDisplayName, getAvatar, getUserPostsPaginated, OnChainPost } from "@/lib/microThreadsClient";
+import { octasToMove } from "@/lib/movement";
+import PostCard from "@/components/PostCard";
 import { v4 as uuidv4 } from 'uuid';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import CreateTodoListModal from "@/components/CreateTodoListModal";
 import CalendarModal from "@/components/CalendarModal";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useNotifications } from "@/components/Notifications";
 
 interface SavedMessage {
     id: string;
@@ -19,11 +22,14 @@ interface SavedMessage {
 export default function SavedMessagesView() {
     const { account, connected } = useWallet();
     const { t } = useLanguage();
+    const { addNotification } = useNotifications();
     const userAddress = account?.address.toString() || "";
     
     // Data State
     const [messages, setMessages] = useState<SavedMessage[]>([]);
+    const [scheduledPosts, setScheduledPosts] = useState<OnChainPost[]>([]);
     const [loading, setLoading] = useState(true);
+    const [activeTab, setActiveTab] = useState<'saved' | 'scheduled'>('saved');
     
     // UI State
     const [showTodoModal, setShowTodoModal] = useState(false);
@@ -38,7 +44,7 @@ export default function SavedMessagesView() {
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const sendButtonRef = useRef<HTMLButtonElement>(null);
 
-    // Load Data (Local Messages Only)
+    // Load Data (Local Messages + Scheduled Posts)
     useEffect(() => {
         const loadData = async () => {
             if (!connected || !userAddress) {
@@ -53,9 +59,28 @@ export default function SavedMessagesView() {
                 const localKey = `saved_messages_${userAddress}`;
                 const localData = localStorage.getItem(localKey);
                 const localMessages: SavedMessage[] = localData ? JSON.parse(localData) : [];
-
-                // Sort by timestamp
                 setMessages(localMessages.sort((a, b) => a.timestamp - b.timestamp));
+
+                // 2. Load Scheduled Posts (On-Chain)
+                if (activeTab === 'scheduled') {
+                    const posts = await getUserPostsPaginated(userAddress, 0, 100);
+                    // Filter for future scheduled posts
+                    const scheduled = posts.filter(post => {
+                         const match = post.content.match(/\[schedule:(\d+)\]/);
+                         if (match) {
+                             const timestamp = parseInt(match[1]);
+                             // Check if timestamp is in future (with 60s buffer for clock drift)
+                             return timestamp > (Date.now() / 1000) - 60;
+                         }
+                         return false;
+                    });
+                    
+                    setScheduledPosts(scheduled.sort((a, b) => {
+                         const timeA = parseInt(a.content.match(/\[schedule:(\d+)\]/)?.[1] || "0");
+                         const timeB = parseInt(b.content.match(/\[schedule:(\d+)\]/)?.[1] || "0");
+                         return timeA - timeB;
+                    }));
+                }
 
             } catch (error) {
                 console.error("Error loading saved messages:", error);
@@ -65,8 +90,58 @@ export default function SavedMessagesView() {
         };
 
         loadData();
-    }, [connected, userAddress]);
+    }, [connected, userAddress, activeTab]);
     
+    // Listen for new scheduled posts (Optimistic Update)
+    useEffect(() => {
+        const handlePostSuccess = (e: Event) => {
+             const customEvent = e as CustomEvent<{ tempId: string; finalId: number; post: OnChainPost }>;
+             if (customEvent.detail && activeTab === 'scheduled') {
+                 const { post } = customEvent.detail;
+                 
+                 // Check if it's a scheduled post
+                 const match = post.content.match(/\[schedule:(\d+)\]/);
+                 if (match) {
+                     const timestamp = parseInt(match[1]);
+                     if (timestamp > (Date.now() / 1000) - 60) {
+                         // Add to scheduled posts
+                         setScheduledPosts(prev => {
+                             const newPosts = [...prev, post];
+                             return newPosts.sort((a, b) => {
+                                 const timeA = parseInt(a.content.match(/\[schedule:(\d+)\]/)?.[1] || "0");
+                                 const timeB = parseInt(b.content.match(/\[schedule:(\d+)\]/)?.[1] || "0");
+                                 return timeA - timeB;
+                             });
+                         });
+                     }
+                 }
+             }
+        };
+
+        window.addEventListener('post_success', handlePostSuccess);
+        return () => window.removeEventListener('post_success', handlePostSuccess);
+    }, [activeTab]);
+    
+    // Listen for new drafts saved from other components
+    useEffect(() => {
+        const handleDraftSaved = () => {
+             if (activeTab === 'saved' && userAddress) {
+                 const localKey = `saved_messages_${userAddress}`;
+                 const localData = localStorage.getItem(localKey);
+                 const localMessages: SavedMessage[] = localData ? JSON.parse(localData) : [];
+                 setMessages(localMessages.sort((a, b) => a.timestamp - b.timestamp));
+                 
+                 // Scroll to bottom
+                 setTimeout(() => {
+                    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+                 }, 100);
+             }
+        };
+
+        window.addEventListener('draft_saved', handleDraftSaved);
+        return () => window.removeEventListener('draft_saved', handleDraftSaved);
+    }, [activeTab, userAddress]);
+
     // Close context menu on click outside
     useEffect(() => {
         const handleClick = () => setContextMenuPos(null);
@@ -74,10 +149,12 @@ export default function SavedMessagesView() {
         return () => window.removeEventListener('click', handleClick);
     }, []);
 
-    // Auto-scroll to bottom
+    // Auto-scroll to bottom (only for saved messages)
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages, loading]);
+        if (activeTab === 'saved') {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }
+    }, [messages, loading, activeTab]);
 
     // Save Local Message
     const saveMessage = (newMessage: SavedMessage) => {
@@ -87,6 +164,14 @@ export default function SavedMessagesView() {
         // Persist to LocalStorage
         const localKey = `saved_messages_${userAddress}`;
         localStorage.setItem(localKey, JSON.stringify(updatedMessages));
+
+        // Show toast notification
+        addNotification("Draft saved!", "success", { persist: false });
+        
+        // Ensure scroll to bottom
+        setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        }, 100);
     };
 
     const handleSendMessage = (scheduledFor?: number) => {
@@ -193,9 +278,9 @@ export default function SavedMessagesView() {
     };
 
     return (
-        <div className="flex flex-col h-full md:px-6">
+        <div className="flex flex-col h-[calc(100vh-89px)] md:px-6 relative overflow-hidden">
             {/* Header */}
-            <div className="flex items-center gap-3 mb-4 px-4 md:px-0 border-b border-[var(--card-border)] pb-4 flex-shrink-0">
+            <div className="flex items-center gap-3 mt-6 mb-4 px-4 md:px-0 border-b border-[var(--card-border)] pb-4 flex-shrink-0">
                 <div className="w-10 h-10 bg-[var(--accent)]/20 rounded-full flex items-center justify-center">
                     <svg className="w-6 h-6 text-[var(--accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
@@ -207,121 +292,170 @@ export default function SavedMessagesView() {
                 </div>
             </div>
 
+            {/* Tabs */}
+            <div className="flex px-4 md:px-0 mb-4 border-b border-[var(--card-border)]">
+                <button 
+                    onClick={() => setActiveTab('saved')}
+                    className={`pb-2 px-4 font-medium transition-colors relative ${activeTab === 'saved' ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                >
+                    {t.drafts}
+                    {activeTab === 'saved' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--accent)] rounded-t-full"></div>}
+                </button>
+                <button 
+                    onClick={() => setActiveTab('scheduled')}
+                    className={`pb-2 px-4 font-medium transition-colors relative ${activeTab === 'scheduled' ? 'text-[var(--accent)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                >
+                    {t.scheduled}
+                    {activeTab === 'scheduled' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--accent)] rounded-t-full"></div>}
+                </button>
+            </div>
+
             {/* Messages List */}
             <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar pb-4 min-h-0">
                 {loading ? (
                     <div className="flex items-center justify-center h-full">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--accent)]"></div>
                     </div>
-                ) : messages.length === 0 ? (
-                    <div className="text-center py-20 opacity-50">
-                        <p className="text-xl font-bold">No saved messages yet</p>
-                        <p>Send a message to yourself or bookmark a post.</p>
-                    </div>
-                ) : (
-                    messages.map((msg) => (
-                        <div key={msg.id} className="flex justify-end group">
-                            <div className="max-w-[85%] relative">
-                                {/* Delete Button (visible on hover) */}
-                                <button 
-                                    onClick={() => deleteMessage(msg.id)}
-                                    className="absolute -left-8 top-0 text-red-500 opacity-0 group-hover:opacity-100 p-1"
-                                >
-                                    ✕
-                                </button>
+                ) : activeTab === 'saved' ? (
+                    messages.length === 0 ? (
+                        <div className="text-center py-20 opacity-50">
+                            <p className="text-xl font-bold">No saved messages yet</p>
+                            <p>Send a message to yourself or bookmark a post.</p>
+                        </div>
+                    ) : (
+                        messages.map((msg) => (
+                            <div key={msg.id} className="flex justify-end group">
+                                <div className="max-w-[85%] relative">
+                                    {/* Delete Button (visible on hover) */}
+                                    <button 
+                                        onClick={() => deleteMessage(msg.id)}
+                                        className="absolute -left-8 top-0 text-red-500 opacity-0 group-hover:opacity-100 p-1"
+                                    >
+                                        ✕
+                                    </button>
 
-                                <div className="rounded-2xl p-3 bg-[var(--card-bg)] border border-[var(--card-border)]">
-                                    
-                                    {/* Text Content */}
-                                    {msg.type === 'text' && (
-                                        <div className="whitespace-pre-wrap text-[var(--text-primary)]">
-                                            {msg.content}
-                                            {/* Simple Link Detection */}
-                                            {msg.content.match(/https?:\/\/[^\s]+/) && (
-                                                <div className="mt-2 p-2 bg-[var(--bg-primary)] rounded text-xs truncate text-[var(--accent)]">
-                                                    🔗 <a href={msg.content.match(/https?:\/\/[^\s]+/)[0]} target="_blank" rel="noreferrer" className="hover:underline">
-                                                        {msg.content.match(/https?:\/\/[^\s]+/)[0]}
-                                                    </a>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* Todo List Content */}
-                                    {msg.type === 'todo_list' && (
-                                        <div className="w-full min-w-[200px]">
-                                            {msg.content.title && (
-                                                <div className="font-bold text-[var(--accent)] mb-2 px-1">
-                                                    {msg.content.title}
-                                                </div>
-                                            )}
-                                            <div className="space-y-1">
-                                                {msg.content.items.map((item: any) => (
-                                                    <div 
-                                                        key={item.id} 
-                                                        className="flex items-center gap-3 p-1 hover:bg-[var(--hover-bg)] rounded cursor-pointer group/item"
-                                                        onClick={() => toggleTodoListData(msg.id, item.id)}
-                                                    >
-                                                        <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors flex-shrink-0 ${
-                                                            item.completed ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--text-secondary)] group-hover/item:border-[var(--accent)]'
-                                                        }`}>
-                                                            {item.completed && <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                                                        </div>
-                                                        <span className={`${item.completed ? 'line-through opacity-50' : ''} text-[var(--text-primary)] break-words w-full`}>
-                                                            {item.text}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Todo Content (Legacy) */}
-                                    {msg.type === 'todo' && (
-                                        <div className="flex items-center gap-3 cursor-pointer" onClick={() => toggleTodo(msg.id)}>
-                                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
-                                                msg.completed ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--text-secondary)]'
-                                            }`}>
-                                                {msg.completed && <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
-                                            </div>
-                                            <span className={`${msg.completed ? 'line-through opacity-50' : ''} text-[var(--text-primary)]`}>
+                                    <div className="rounded-2xl p-3 bg-[var(--card-bg)] border border-[var(--card-border)]">
+                                        
+                                        {/* Text Content */}
+                                        {msg.type === 'text' && (
+                                            <div className="whitespace-pre-wrap text-[var(--text-primary)]">
                                                 {msg.content}
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {/* Media Content */}
-                                    {(msg.type === 'image' || msg.type === 'video') && (
-                                        <div className="max-w-sm rounded-lg overflow-hidden">
-                                            {msg.type === 'image' ? (
-                                                <img src={msg.content} alt="Saved" className="w-full h-auto" />
-                                            ) : (
-                                                <video src={msg.content} controls className="w-full h-auto" />
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* Metadata */}
-                                    <div className="flex items-center justify-end gap-2 mt-1">
-                                        {msg.metadata?.scheduledFor && (
-                                            <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1 rounded">
-                                                📅 {new Date(msg.metadata.scheduledFor).toLocaleDateString()}
-                                            </span>
+                                                {/* Simple Link Detection */}
+                                                {msg.content.match(/https?:\/\/[^\s]+/) && (
+                                                    <div className="mt-2 p-2 bg-[var(--bg-primary)] rounded text-xs truncate text-[var(--accent)]">
+                                                        🔗 <a href={msg.content.match(/https?:\/\/[^\s]+/)[0]} target="_blank" rel="noreferrer" className="hover:underline">
+                                                            {msg.content.match(/https?:\/\/[^\s]+/)[0]}
+                                                        </a>
+                                                    </div>
+                                                )}
+                                            </div>
                                         )}
-                                        <span className="text-[10px] text-[var(--text-secondary)]">
-                                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
+
+                                        {/* Todo List Content */}
+                                        {msg.type === 'todo_list' && (
+                                            <div className="w-full min-w-[200px]">
+                                                {msg.content.title && (
+                                                    <div className="font-bold text-[var(--accent)] mb-2 px-1">
+                                                        {msg.content.title}
+                                                    </div>
+                                                )}
+                                                <div className="space-y-1">
+                                                    {msg.content.items.map((item: any) => (
+                                                        <div 
+                                                            key={item.id} 
+                                                            className="flex items-center gap-3 p-1 hover:bg-[var(--hover-bg)] rounded cursor-pointer group/item"
+                                                            onClick={() => toggleTodoListData(msg.id, item.id)}
+                                                        >
+                                                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors flex-shrink-0 ${
+                                                                item.completed ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--text-secondary)] group-hover/item:border-[var(--accent)]'
+                                                            }`}>
+                                                                {item.completed && <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                                            </div>
+                                                            <span className={`${item.completed ? 'line-through opacity-50' : ''} text-[var(--text-primary)] break-words w-full`}>
+                                                                {item.text}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Todo Content (Legacy) */}
+                                        {msg.type === 'todo' && (
+                                            <div className="flex items-center gap-3 cursor-pointer" onClick={() => toggleTodo(msg.id)}>
+                                                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                                                    msg.completed ? 'bg-[var(--accent)] border-[var(--accent)]' : 'border-[var(--text-secondary)]'
+                                                }`}>
+                                                    {msg.completed && <svg className="w-3 h-3 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                                </div>
+                                                <span className={`${msg.completed ? 'line-through opacity-50' : ''} text-[var(--text-primary)]`}>
+                                                    {msg.content}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {/* Media Content */}
+                                        {(msg.type === 'image' || msg.type === 'video') && (
+                                            <div className="max-w-sm rounded-lg overflow-hidden">
+                                                {msg.type === 'image' ? (
+                                                    <img src={msg.content} alt="Saved" className="w-full h-auto" />
+                                                ) : (
+                                                    <video src={msg.content} controls className="w-full h-auto" />
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Metadata */}
+                                        <div className="flex items-center justify-end gap-2 mt-1">
+                                            {msg.metadata?.scheduledFor && (
+                                                <span className="text-[10px] bg-yellow-500/20 text-yellow-500 px-1 rounded">
+                                                    📅 {new Date(msg.metadata.scheduledFor).toLocaleDateString()}
+                                                </span>
+                                            )}
+                                            <span className="text-[10px] text-[var(--text-secondary)]">
+                                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                        ))
+                    )
+                ) : (
+                    // Scheduled Posts View
+                    scheduledPosts.length === 0 ? (
+                        <div className="text-center py-20 opacity-50">
+                            <p className="text-xl font-bold">No scheduled posts</p>
+                            <p>Posts scheduled for the future will appear here.</p>
                         </div>
-                    ))
+                    ) : (
+                        <div className="space-y-4">
+                            {scheduledPosts.map(post => (
+                                <PostCard
+                                    key={post.id}
+                                    post={{
+                                        id: post.id.toString(),
+                                        global_id: post.global_id,
+                                        creatorAddress: post.creator,
+                                        content: post.content,
+                                        image_url: post.image_url,
+                                        style: post.style,
+                                        totalTips: octasToMove(post.total_tips),
+                                        createdAt: post.timestamp * 1000,
+                                    }}
+                                    isOwner={true}
+                                    hideComments={true}
+                                />
+                            ))}
+                        </div>
+                    )
                 )}
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* Input Area */}
-            <div className="mt-4 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-2 relative">
+            {/* Input Area (Only for Saved Messages) */}
+            {activeTab === 'saved' && (<>
+            <div className="mt-auto mb-6 bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-2 relative shadow-lg flex-shrink-0">
                 {showEmojiPicker && (
                     <div className="absolute bottom-full right-0 mb-2 z-50">
                         <EmojiPicker 
@@ -425,6 +559,8 @@ export default function SavedMessagesView() {
                     </button>
                 </div>
             )}
+            {/* End of Input Area condition */}
+            </>)}
         </div>
     );
 }

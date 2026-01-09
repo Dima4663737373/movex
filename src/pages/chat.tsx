@@ -272,8 +272,23 @@ export default function ChatPage() {
         
         await Promise.all(toFetch.map(async (addr) => {
             try {
-                const displayName = await getDisplayName(addr);
+                let displayName = await getDisplayName(addr);
                 const avatar = await getAvatar(addr);
+
+                if (!displayName || displayName === "Anonymous User") {
+                    try {
+                        const res = await fetch(`/api/profile?address=${addr}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.name) {
+                                displayName = data.name;
+                            }
+                        }
+                    } catch (err) {
+                        console.error("Error fetching off-chain profile", err);
+                    }
+                }
+
                 fetched[addr] = { displayName, avatar };
             } catch (e) {
                 console.error(`Failed to fetch profile for ${addr}`, e);
@@ -547,9 +562,9 @@ export default function ChatPage() {
             </Head>
 
             {/* MainLayout is applied in _app.tsx, so we just provide content */}
-            <div className="grid grid-cols-1 md:grid-cols-[350px_1fr] h-full md:gap-x-0 md:divide-x md:divide-[var(--card-border)]">
+            <div className="grid grid-cols-1 sm:grid-cols-[350px_1fr] h-[calc(100vh-89px)] sm:gap-x-0 sm:divide-x sm:divide-[var(--card-border)]">
                 {/* MIDDLE: Conversations List */}
-                <div className={`flex-col h-full bg-[var(--bg-primary)] pt-6 md:px-6 ${activeContact ? 'hidden md:flex' : 'flex'}`}>
+                <div className={`flex-col h-full bg-[var(--bg-primary)] pt-6 md:px-6 ${activeContact ? 'hidden sm:flex' : 'flex'}`}>
                     <ConversationList
                         conversations={conversations}
                         activeContact={activeContact}
@@ -561,7 +576,7 @@ export default function ChatPage() {
                 </div>
 
                 {/* RIGHT: Chat Window */}
-                <div className={`flex-col h-full pt-6 md:px-6 ${!activeContact ? 'hidden md:flex' : 'flex'}`}>
+                <div className={`flex flex-col h-full pt-6 md:px-6 overflow-hidden ${!activeContact ? 'hidden sm:flex' : 'flex'}`}>
                     {!activeContact ? (
                         <div className="flex-1 flex flex-col items-center justify-center text-center text-[var(--text-secondary)]">
                             <div className="w-20 h-20 bg-[var(--card-border)] rounded-full flex items-center justify-center mx-auto mb-4">
@@ -609,7 +624,7 @@ export default function ChatPage() {
                                     </div>
 
                                     {/* Messages Area */}
-                                    <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4">
+                                    <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4 min-h-0">
                                         {messages.map((msg, idx) => {
                                             const isMe = msg.sender === userAddress;
                                             let content = msg.content;

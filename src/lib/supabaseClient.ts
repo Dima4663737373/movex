@@ -39,9 +39,9 @@ if (supabaseKey) {
 }
 
 if (typeof window !== 'undefined') {
-    console.log("Supabase Client Init - Key Length:", supabaseKey?.length);
-    if ((supabaseKey?.length || 0) > 200) {
-        console.warn("Supabase Key might still be too long!");
+    // console.log("Supabase Client Init - Key Length:", supabaseKey?.length);
+    if ((supabaseKey?.length || 0) > 300) {
+        console.warn("Supabase Key might be too long (check for duplicates)");
     }
 }
 

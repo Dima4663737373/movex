@@ -75,6 +75,7 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
     const { currentNetwork } = useNetwork();
     const { addNotification } = useNotifications();
     const [displayName, setDisplayName] = useState<string>(normalizedPost.creatorHandle || '');
+    const [username, setUsername] = useState<string>(''); // Added username state
     const [avatarUrl, setAvatarUrl] = useState<string>(normalizedPost.creatorAvatar || '');
     const [tipping, setTipping] = useState(false);
     const [tipAmount, setTipAmount] = useState('1');
@@ -232,6 +233,9 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
     const bountyMatch = localPost.content.match(/\[bounty:([\d.]+)\]/);
     const bountyAmount = bountyMatch ? parseFloat(bountyMatch[1]) : null;
 
+    const scheduleMatch = localPost.content.match(/\[schedule:(\d+)\]/);
+    const scheduledTimestamp = scheduleMatch ? parseInt(scheduleMatch[1]) : null;
+
     const pollData = useMemo(() => {
         const match = localPost.content.match(/\[poll:(.*?)\]/);
         if (!match) return null;
@@ -279,12 +283,13 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
     const formatContentWithLinks = (text: string) => {
         if (!text) return null;
         
-        // Strip ref tag, bounty tag, poll tag, and app tag
+        // Strip ref tag, bounty tag, poll tag, app tag, and schedule tag
         const cleanText = text
             .replace(/\[ref:[a-f0-9\-]+\]/g, '')
             .replace(/\[bounty:[\d.]+\]/g, '')
             .replace(/\[poll:.*?\]/g, '')
             .replace(/\[app:.*?\]/g, '')
+            .replace(/\[schedule:\d+\]/g, '')
             .trim();
             
         if (!cleanText) return null;
@@ -325,6 +330,17 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                         onClick={(e) => e.stopPropagation()}
                     >
                         ${highlightText(segment.content, highlight)}
+                    </Link>
+                );
+            } else if (segment.type === 'mention') {
+                return (
+                    <Link 
+                        key={index}
+                        href={`/${segment.content}`}
+                        className="text-[var(--accent)] hover:underline relative z-10 cursor-pointer"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        @{highlightText(segment.content, highlight)}
                     </Link>
                 );
             } else {
@@ -454,12 +470,13 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
         const fetchProfile = async () => {
             try {
                 // Sync from props if available
-                if (normalizedPost.creatorHandle) {
-                    setDisplayName(normalizedPost.creatorHandle);
+                let currentName = normalizedPost.creatorHandle;
+                if (currentName) {
+                    setDisplayName(currentName);
                 } else {
                     // Fetch if not provided
-                    const name = await getDisplayName(normalizedPost.creatorAddress);
-                    if (name) setDisplayName(name);
+                    currentName = await getDisplayName(normalizedPost.creatorAddress);
+                    if (currentName) setDisplayName(currentName);
                 }
 
                 if (normalizedPost.creatorAvatar) {
@@ -467,6 +484,23 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                 } else {
                     const avatar = await getAvatar(normalizedPost.creatorAddress);
                     if (avatar) setAvatarUrl(avatar);
+                }
+
+                // Fetch username and extended profile from Supabase
+                try {
+                    const res = await fetch(`/api/profile?address=${normalizedPost.creatorAddress}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.display_name) {
+                            setUsername(data.display_name);
+                        }
+                        // Fallback to off-chain name if on-chain is missing or default
+                        if ((!currentName || currentName === "Anonymous User") && data.name) {
+                            setDisplayName(data.name);
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error fetching username:", e);
                 }
             } catch (e) {
                 console.error("Error fetching profile", e);
@@ -1161,9 +1195,31 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                                 <Link href={`/${normalizedPost.creatorAddress}`} className="font-bold text-[var(--text-primary)] hover:underline truncate" onClick={(e) => e.stopPropagation()}>
                                     {displayName || formatMovementAddress(normalizedPost.creatorAddress)}
                                 </Link>
-                                <span className="text-[var(--text-secondary)] text-sm truncate">
-                                    @{normalizedPost.creatorAddress ? normalizedPost.creatorAddress.slice(0, 6) : '...'}...
-                                </span>
+                                {username ? (
+                                    <span 
+                                        className="text-[var(--text-secondary)] text-sm truncate cursor-pointer hover:text-[var(--accent)]"
+                                        title="Click to copy handle"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigator.clipboard.writeText(username);
+                                            addNotification("Handle copied", "success", { persist: false, duration: 1500 });
+                                        }}
+                                    >
+                                        @{username}
+                                    </span>
+                                ) : (
+                                    <span 
+                                        className="text-[var(--text-secondary)] text-sm truncate cursor-pointer hover:text-[var(--accent)]"
+                                        title="Click to copy address"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            navigator.clipboard.writeText(normalizedPost.creatorAddress);
+                                            addNotification("Address copied", "success", { persist: false, duration: 1500 });
+                                        }}
+                                    >
+                                        @{formatMovementAddress(normalizedPost.creatorAddress)}
+                                    </span>
+                                )}
                                 <span className="text-[var(--text-secondary)] text-sm">·</span>
                                 {!compact && (
                                 <span className="text-[var(--text-secondary)] text-sm whitespace-nowrap" title={new Date(post.createdAt).toLocaleString()}>
@@ -1199,6 +1255,15 @@ export default function PostCard({ post, isOwner, showTipButton = true, initialI
                                     >
                                         <span>🎯</span>
                                         {bountyAmount} MOVE
+                                    </span>
+                                )}
+                                {scheduledTimestamp && (
+                                    <span 
+                                        className="ml-2 px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 text-xs font-bold border border-blue-500/20 flex items-center gap-1 shrink-0"
+                                        title={`Scheduled for: ${new Date(scheduledTimestamp * 1000).toLocaleString()}`}
+                                    >
+                                        <span>📅</span>
+                                        Scheduled
                                     </span>
                                 )}
                             </div>
