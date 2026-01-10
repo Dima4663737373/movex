@@ -54,7 +54,6 @@ module mines::daily_check_in_v10 {
         });
     }
 
-    #[view]
     public fun get_streak(user_addr: address): u64 acquires CheckInState {
         if (exists<CheckInState>(user_addr)) {
             borrow_global<CheckInState>(user_addr).current_streak
@@ -63,7 +62,6 @@ module mines::daily_check_in_v10 {
         }
     }
 
-    #[view]
     public fun can_check_in(user_addr: address): bool acquires CheckInState {
         if (!exists<CheckInState>(user_addr)) {
             return true

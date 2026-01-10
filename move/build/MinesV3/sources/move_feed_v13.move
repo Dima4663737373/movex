@@ -98,7 +98,7 @@ module mines::move_feed_v13 {
         while (i < len) {
             let post = vector::borrow_mut(&mut feed.posts, i);
             if (post.id == post_id) {
-                assert!(post.author == author, 403);
+                assert!(post.author == author, 1); // Only author can delete
                 post.is_deleted = true;
                 break
             };
@@ -128,7 +128,6 @@ module mines::move_feed_v13 {
         });
     }
 
-    #[view]
     public fun get_global_posts_count(): u64 acquires GlobalFeed {
         if (exists<GlobalFeed>(@mines)) {
              let feed = borrow_global<GlobalFeed>(@mines);
@@ -148,7 +147,6 @@ module mines::move_feed_v13 {
         }
     }
 
-    #[view]
     public fun get_user_posts_count(user_addr: address): u64 acquires GlobalFeed {
         if (!exists<GlobalFeed>(@mines)) {
             return 0
@@ -167,7 +165,6 @@ module mines::move_feed_v13 {
         count
     }
 
-    #[view]
     public fun get_user_posts_paginated(user_addr: address, page: u64, limit: u64): (vector<Post>, u64) acquires GlobalFeed {
         if (!exists<GlobalFeed>(@mines)) {
             return (vector::empty(), 0)
@@ -208,7 +205,6 @@ module mines::move_feed_v13 {
         (result, total_count)
     }
 
-    #[view]
     public fun get_all_posts_paginated(page: u64, limit: u64): (vector<Post>, u64) acquires GlobalFeed {
         if (!exists<GlobalFeed>(@mines)) {
             return (vector::empty(), 0)
@@ -253,7 +249,6 @@ module mines::move_feed_v13 {
         (result, total_count)
     }
 
-    #[view]
     public fun get_profile(user_addr: address): String acquires Profile {
         if (exists<Profile>(user_addr)) {
             borrow_global<Profile>(user_addr).name
@@ -278,17 +273,14 @@ module mines::move_feed_v13 {
         }
     }
 
-    #[view]
     public fun get_global_tip_stats(): (u64, address, u64) {
         (0, @0x0, 0) 
     }
 
-    #[view]
     public fun get_user_tip_stats(_user_addr: address): (u64, u64, u64) {
         (0, 0, 0) 
     }
 
-    #[view]
     public fun get_post_by_id(post_id: u64): Post acquires GlobalFeed {
         let feed = borrow_global<GlobalFeed>(@mines);
         if (post_id < vector::length(&feed.posts)) {
@@ -312,7 +304,6 @@ module mines::move_feed_v13 {
         abort 404
     }
 
-    #[view]
     public fun get_comments_for_post(post_id: u64): vector<Comment> acquires GlobalFeed {
         if (!exists<GlobalFeed>(@mines)) {
             return vector::empty()

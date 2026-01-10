@@ -53,7 +53,6 @@ module mines::donations_v10 {
         });
     }
 
-    #[view]
     public fun get_global_tip_stats(): (u64, address, u64) acquires Registry {
         if (exists<Registry>(@mines)) {
             let total = borrow_global<Registry>(@mines).global_total;
@@ -63,7 +62,6 @@ module mines::donations_v10 {
         }
     }
 
-    #[view]
     public fun get_all_authors(): vector<address> acquires Registry {
         if (exists<Registry>(@mines)) {
             borrow_global<Registry>(@mines).authors
@@ -72,7 +70,6 @@ module mines::donations_v10 {
         }
     }
 
-    #[view]
     public fun get_author_tips(author: address): u64 acquires Registry {
         if (exists<Registry>(@mines)) {
             let registry = borrow_global<Registry>(@mines);

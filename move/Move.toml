@@ -4,7 +4,7 @@ version = "1.0.1"
 upgrade_policy = "compatible"
 
 [addresses]
-mines = "_"
+mines = "0x78048355a541c543dd0dcff80abbcb1c6c481f958fd21a9be0861008f3f2bdd2"
 
 [dependencies]
 AptosFramework = { git = "https://github.com/movementlabsxyz/aptos-core.git", subdir = "aptos-move/framework/aptos-framework", rev = "movement" }
