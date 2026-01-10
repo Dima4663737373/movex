@@ -62,17 +62,21 @@ export function useMovementTransaction() {
             const amountInOctas = Math.floor(amount * 100_000_000);
             
             // Call Donations contract
-            let payloadData;
+            let payloadData: {
+                function: `${string}::${string}::${string}`;
+                typeArguments: never[];
+                functionArguments: string[];
+            };
 
             if (postId) {
                 payloadData = {
-                    function: `${moduleAddress}::move_feed_v13::tip_post`,
+                    function: `${moduleAddress}::move_feed_v13::tip_post` as `${string}::${string}::${string}`,
                     typeArguments: [],
                     functionArguments: [postId, amountInOctas.toString()]
                 };
             } else {
                 payloadData = {
-                    function: `${moduleAddress}::donations_v10::send_tip`,
+                    function: `${moduleAddress}::donations_v10::send_tip` as `${string}::${string}::${string}`,
                     typeArguments: [],
                     functionArguments: [recipient, amountInOctas.toString()]
                 };
